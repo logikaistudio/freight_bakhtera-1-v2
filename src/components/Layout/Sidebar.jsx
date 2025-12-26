@@ -106,7 +106,7 @@ const Sidebar = () => {
             <div className="px-6 py-6 border-b border-dark-border flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold gradient-text">BAKHTERA-1</h1>
-                    <p className="text-xs text-silver-dark mt-1">Platform Manajemen Terintegrasi</p>
+                    <p className="text-xs text-silver-dark mt-1">Freight & Asset Management</p>
                 </div>
                 {/* Theme Toggle */}
                 <ThemeToggle />
