@@ -220,11 +220,12 @@ const WarehouseInventory = () => {
                         <thead className="bg-accent-blue">
                             <tr>
                                 <th className="px-4 py-3 text-center text-sm font-semibold text-white">Tanggal Masuk</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Total Package Masuk</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Total Item Masuk</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Jumlah Package Masuk</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Jumlah Item Masuk</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Lokasi</th>
                                 <th className="px-4 py-3 text-center text-sm font-semibold text-white">Tanggal Keluar</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Total Package Keluar</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Total Item Keluar</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Jumlah Package Keluar</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Jumlah Item Keluar</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
@@ -252,6 +253,9 @@ const WarehouseInventory = () => {
                                         </td>
                                         <td className="px-4 py-3 text-sm text-accent-blue font-semibold text-center">
                                             {totalItems}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-silver text-center">
+                                            {item.location?.room || '-'} / {item.location?.rack || '-'} / {item.location?.slot || '-'}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-silver text-center">
                                             {item.exitDate ? new Date(item.exitDate).toLocaleDateString('id-ID') : '-'}
