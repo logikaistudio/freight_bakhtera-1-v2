@@ -41,6 +41,7 @@ const PengajuanManagement = () => {
         shipper: '',
         origin: '',
         destination: '',
+        itemDate: '',  // Tanggal Masuk/Keluar Barang (conditional based on type)
         packages: [],
         documents: [],
         notes: '',
@@ -109,8 +110,11 @@ const PengajuanManagement = () => {
             customer: '',
             type: 'inbound',
             bcDocType: '',
+            itemCode: '',
+            shipper: '',
             origin: '',
             destination: '',
+            itemDate: '',
             packages: [],
             documents: [],
             notes: '',
@@ -125,6 +129,8 @@ const PengajuanManagement = () => {
             bcDocumentNumber: '',
             bcSupportingDocuments: [],
             rejectionReason: '',
+            rejectionDate: '',
+            pic: '',
             customsStatus: 'pending'
         });
         setShowForm(false);
@@ -296,6 +302,24 @@ const PengajuanManagement = () => {
                                     onChange={(e) => setFormData({ ...formData, submissionDate: e.target.value })}
                                     className="w-full"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-silver mb-2">
+                                    {formData.type === 'inbound' ? 'Tanggal Masuk Barang' : 'Tanggal Keluar Barang'}
+                                    {formData.type === 'outbound' && <span className="text-red-400"> *</span>}
+                                </label>
+                                <input
+                                    type="date"
+                                    required={formData.type === 'outbound'}
+                                    value={formData.itemDate}
+                                    onChange={(e) => setFormData({ ...formData, itemDate: e.target.value })}
+                                    className="w-full"
+                                />
+                                <p className="text-xs text-silver-dark mt-1">
+                                    {formData.type === 'inbound'
+                                        ? 'Tanggal barang masuk ke TPPB (opsional)'
+                                        : 'Tanggal barang keluar dari TPPB (wajib untuk ekspor)'}
+                                </p>
                             </div>
                         </div>
                     </div>
