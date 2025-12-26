@@ -136,12 +136,18 @@ const WarehouseInventory = () => {
             const pengajuanItems = warehouseInventory.filter(i => i.pengajuanId === item.pengajuanId);
             const uniquePackages = [...new Set(pengajuanItems.map(i => i.packageNumber))];
 
+            // Calculate outbound quantities (items with movements or exitDate)
+            const outboundItems = pengajuanItems.filter(i => i.exitDate || (i.movements && i.movements.some(m => m.movementType === 'out')));
+            const outboundPackages = [...new Set(outboundItems.map(i => i.packageNumber))];
+
             return {
                 pengajuanNumber: item.pengajuanNumber || item.pengajuanId || '-',
                 itemCode: item.itemCode || '-',
                 bcDocumentNumber: item.bcDocumentNumber || '-',
-                packageCount: uniquePackages.length,
-                itemCount: pengajuanItems.length,
+                packageCountIn: uniquePackages.length,
+                itemCountIn: pengajuanItems.length,
+                packageCountOut: outboundPackages.length,
+                itemCountOut: outboundItems.length,
                 entryDate: item.submissionDate || item.entryDate,
                 exitDate: item.exitDate || '-',
                 locationRoom: item.location?.room || '-',
@@ -155,8 +161,10 @@ const WarehouseInventory = () => {
             { key: 'pengajuanNumber', header: 'No. Pendaftaran' },
             { key: 'itemCode', header: 'Kode Barang' },
             { key: 'bcDocumentNumber', header: 'No. Dokumen' },
-            { key: 'packageCount', header: 'Jumlah Package' },
-            { key: 'itemCount', header: 'Jumlah Item' },
+            { key: 'packageCountIn', header: 'Jumlah Package Masuk' },
+            { key: 'itemCountIn', header: 'Jumlah Item Masuk' },
+            { key: 'packageCountOut', header: 'Jumlah Package Keluar' },
+            { key: 'itemCountOut', header: 'Jumlah Item Keluar' },
             { key: 'entryDate', header: 'Tanggal Masuk' },
             { key: 'exitDate', header: 'Tanggal Keluar' },
             { key: 'locationRoom', header: 'Ruang' },
@@ -214,13 +222,14 @@ const WarehouseInventory = () => {
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. Pendaftaran</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">Kode Barang</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. Dokumen</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah Package</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah Item</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah Package Masuk</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah Item Masuk</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah Package Keluar</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah Item Keluar</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal Masuk</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal Keluar</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">Lokasi</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">Keterangan</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-white">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
@@ -251,6 +260,19 @@ const WarehouseInventory = () => {
                                         <td className="px-4 py-3 text-sm text-silver text-center">
                                             {totalItems}
                                         </td>
+                                        <td className="px-4 py-3 text-sm text-silver-dark text-center">
+                                            {(() => {
+                                                const outboundItems = pengajuanItems.filter(i => i.exitDate || (i.movements && i.movements.some(m => m.movementType === 'out')));
+                                                const outboundPackages = [...new Set(outboundItems.map(i => i.packageNumber))];
+                                                return outboundPackages.length;
+                                            })()}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-silver-dark text-center">
+                                            {(() => {
+                                                const outboundItems = pengajuanItems.filter(i => i.exitDate || (i.movements && i.movements.some(m => m.movementType === 'out')));
+                                                return outboundItems.length;
+                                            })()}
+                                        </td>
                                         <td className="px-4 py-3 text-sm text-silver text-center">
                                             {new Date(item.submissionDate || item.entryDate).toLocaleDateString('id-ID')}
                                         </td>
@@ -262,9 +284,6 @@ const WarehouseInventory = () => {
                                         </td>
                                         <td className="px-4 py-3 text-sm text-silver-dark max-w-xs truncate">
                                             {item.remarks || item.notes || '-'}
-                                        </td>
-                                        <td className="px-4 py-3 text-center text-sm text-silver-dark">
-                                            Klik untuk detail →
                                         </td>
                                     </tr>
                                 );
