@@ -643,6 +643,60 @@ export const DataProvider = ({ children }) => {
     }, [customers]);
     */
 
+    // Realtime Subscriptions
+    useEffect(() => {
+        const channel = supabase.channel('postgres_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_customers' }, (payload) => {
+                console.log('⚡ Realtime Customer Update:', payload);
+                if (payload.eventType === 'INSERT') setCustomers(prev => [...prev, payload.new]);
+                else if (payload.eventType === 'UPDATE') setCustomers(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+                else if (payload.eventType === 'DELETE') setCustomers(prev => prev.filter(item => item.id !== payload.old.id));
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_vendors' }, (payload) => {
+                console.log('⚡ Realtime Vendor Update:', payload);
+                if (payload.eventType === 'INSERT') setVendors(prev => [...prev, payload.new]);
+                else if (payload.eventType === 'UPDATE') setVendors(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+                else if (payload.eventType === 'DELETE') setVendors(prev => prev.filter(item => item.id !== payload.old.id));
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_quotations' }, (payload) => {
+                console.log('⚡ Realtime Quotation Update:', payload);
+                if (payload.eventType === 'INSERT') setQuotations(prev => [...prev, payload.new]);
+                else if (payload.eventType === 'UPDATE') setQuotations(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+                // Delete typically not used for quotations, but handled if needed
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_warehouse' }, (payload) => {
+                console.log('⚡ Realtime Warehouse Update:', payload);
+                if (payload.eventType === 'INSERT') setWarehouseInventory(prev => [...prev, payload.new]);
+                else if (payload.eventType === 'UPDATE') setWarehouseInventory(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+                else if (payload.eventType === 'DELETE') setWarehouseInventory(prev => prev.filter(item => item.id !== payload.old.id));
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_inbound' }, (payload) => {
+                console.log('⚡ Realtime Inbound Update:', payload);
+                if (payload.eventType === 'INSERT') setInboundTransactions(prev => [payload.new, ...prev]);
+                else if (payload.eventType === 'UPDATE') setInboundTransactions(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_outbound' }, (payload) => {
+                console.log('⚡ Realtime Outbound Update:', payload);
+                if (payload.eventType === 'INSERT') setOutboundTransactions(prev => [payload.new, ...prev]);
+                else if (payload.eventType === 'UPDATE') setOutboundTransactions(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_reject' }, (payload) => {
+                console.log('⚡ Realtime Reject Update:', payload);
+                if (payload.eventType === 'INSERT') setRejectTransactions(prev => [payload.new, ...prev]);
+                else if (payload.eventType === 'UPDATE') setRejectTransactions(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_customs' }, (payload) => {
+                console.log('⚡ Realtime Customs Doc Update:', payload);
+                if (payload.eventType === 'INSERT') setCustomsDocuments(prev => [...prev, payload.new]);
+                else if (payload.eventType === 'UPDATE') setCustomsDocuments(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+                else if (payload.eventType === 'DELETE') setCustomsDocuments(prev => prev.filter(item => item.id !== payload.old.id));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
     // Save to localStorage whenever data changes
     /*
     useEffect(() => {
@@ -652,7 +706,18 @@ export const DataProvider = ({ children }) => {
     useEffect(() => {
         localStorage.setItem('freight_customers', JSON.stringify(customers));
     }, [customers]);
-    
+    */
+
+    // Save to localStorage whenever data changes
+    /*
+    useEffect(() => {
+        localStorage.setItem('freight_vendors', JSON.stringify(vendors));
+    }, [vendors]);
+
+    useEffect(() => {
+        localStorage.setItem('freight_customers', JSON.stringify(customers));
+    }, [customers]);
+    */
     useEffect(() => {
         localStorage.setItem('freight_finance', JSON.stringify(finance));
     }, [finance]);
