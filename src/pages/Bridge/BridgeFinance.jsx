@@ -182,7 +182,7 @@ const BridgeFinance = () => {
                 {activeTab === 'invoices' ? (
                     <>
                         <h3 className="text-xl font-semibold text-silver-light mb-4">
-                            Daftar Invoice
+                            Invoice
                         </h3>
 
                         {invoices.length === 0 ? (
@@ -261,7 +261,7 @@ const BridgeFinance = () => {
                 ) : activeTab === 'purchases' ? (
                     <>
                         <h3 className="text-xl font-semibold text-silver-light mb-4">
-                            Daftar Purchase/Pembayaran
+                            Pembayaran
                         </h3>
 
                         {purchases.length === 0 ? (
