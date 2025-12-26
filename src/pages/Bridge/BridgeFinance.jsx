@@ -36,6 +36,8 @@ const BridgeFinance = () => {
     const [showPOForm, setShowPOForm] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState(null);
     const [editingPurchase, setEditingPurchase] = useState(null);
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [selectedPurchase, setSelectedPurchase] = useState(null);
 
     // Calculate summary
     const totalInvoices = invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
@@ -76,6 +78,98 @@ const BridgeFinance = () => {
     const handleAddPurchase = () => {
         setEditingPurchase(null);
         setShowPurchaseForm(true);
+    };
+
+    const handlePrint = (type, document) => {
+        const printWindow = window.open('', '_blank');
+        const isInvoice = type === 'invoice';
+
+        const content = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${isInvoice ? 'Invoice' : 'Purchase Document'} - ${document.invoiceNumber || document.documentNumber}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 12pt; line-height: 1.6; padding: 40px; color: #000; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+        .header h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; }
+        .header p { font-size: 10pt; color: #666; }
+        .info-section { margin: 20px 0; }
+        .info-row { display: flex; justify-content: space-between; margin: 8px 0; }
+        .label { font-weight: bold; width: 150px; }
+        .value { flex: 1; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .items-table th, .items-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .items-table th { background: #f0f0f0; font-weight: bold; }
+        .items-table td.number { text-align: right; }
+        .summary { margin-top: 20px; float: right; width: 300px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .summary-row.total { font-weight: bold; font-size: 14pt; border-top: 2px solid #000; margin-top: 10px; padding-top: 10px; }
+        .footer { margin-top: 60px; text-align: center; font-size: 10pt; color: #666; clear: both; }
+        @media print { body { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>${isInvoice ? 'INVOICE' : 'PURCHASE DOCUMENT'}</h1>
+        <p>Bakhtera-1 Freight Management</p>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-row"><span class="label">No. Dokumen:</span><span class="value">${document.invoiceNumber || document.documentNumber}</span></div>
+        <div class="info-row"><span class="label">Tanggal:</span><span class="value">${new Date(document.date).toLocaleDateString('id-ID')}</span></div>
+        <div class="info-row"><span class="label">${isInvoice ? 'Customer' : 'Vendor'}:</span><span class="value">${document.customerName || document.customer || document.vendor || '-'}</span></div>
+        <div class="info-row"><span class="label">Judul:</span><span class="value">${document.title}</span></div>
+        ${document.pengajuanNumber ? `<div class="info-row"><span class="label">Ref. Pendaftaran:</span><span class="value">${document.pengajuanNumber}</span></div>` : ''}
+    </div>
+    
+    ${document.items && document.items.length > 0 ? `
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 40px;">No</th>
+                <th>Deskripsi</th>
+                <th style="width: 80px;">Qty</th>
+                <th style="width: 100px;">Unit</th>
+                <th style="width: 120px;">Harga</th>
+                <th style="width: 120px;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${document.items.map((item, idx) => `
+                <tr>
+                    <td class="number">${idx + 1}</td>
+                    <td>${item.description || item.itemName || '-'}</td>
+                    <td class="number">${item.quantity || 0}</td>
+                    <td>${item.unit || 'pcs'}</td>
+                    <td class="number">Rp ${formatCurrency(item.unitPrice || item.value / item.quantity || 0)}</td>
+                    <td class="number">Rp ${formatCurrency(item.value || 0)}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+    ` : ''}
+    
+    <div class="summary">
+        ${document.discount ? `<div class="summary-row"><span>Diskon:</span><span>Rp ${formatCurrency(document.discount)}</span></div>` : ''}
+        ${document.vat ? `<div class="summary-row"><span>PPN:</span><span>Rp ${formatCurrency(document.vat)}</span></div>` : ''}
+        <div class="summary-row total"><span>TOTAL:</span><span>Rp ${formatCurrency(document.grandTotal)}</span></div>
+    </div>
+    
+    <div class="footer">
+        <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}</p>
+        <p>Dokumen ini dibuat oleh sistem Bakhtera-1</p>
+    </div>
+</body>
+</html>`;
+
+        printWindow.document.write(content);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
     };
 
     // Debug logging
@@ -185,29 +279,35 @@ const BridgeFinance = () => {
                             Invoice
                         </h3>
 
-                        {invoices.length === 0 ? (
-                            <div className="text-center py-8 text-silver-dark">
-                                <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p>Belum ada invoice. Klik "Buat Invoice" untuk memulai.</p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-accent-blue">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-accent-blue">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. Invoice</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Ref. Pendaftaran</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Customer</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Judul</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Nilai</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                                        <th className="px-4 py-3 text-center text-sm font-semibold text-white">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-dark-border">
+                                    {invoices.length === 0 ? (
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. Invoice</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Ref. Pendaftaran</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Customer</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Judul</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Nilai</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
-                                            <th className="px-4 py-3 text-center text-sm font-semibold text-white">Aksi</th>
+                                            <td colSpan="8" className="px-4 py-8 text-center text-silver-dark">
+                                                <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                                <p>Belum ada invoice. Klik "Buat Invoice" untuk memulai.</p>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-dark-border">
-                                        {invoices.map(invoice => (
-                                            <tr key={invoice.id} className="hover:bg-dark-surface smooth-transition">
+                                    ) : (
+                                        invoices.map(invoice => (
+                                            <tr
+                                                key={invoice.id}
+                                                className="hover:bg-dark-surface smooth-transition cursor-pointer"
+                                                onClick={() => setSelectedInvoice(invoice)}
+                                            >
                                                 <td className="px-4 py-3 text-sm text-silver-light font-medium">
                                                     {invoice.invoiceNumber}
                                                 </td>
@@ -238,7 +338,7 @@ const BridgeFinance = () => {
                                                         {invoice.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center justify-center gap-2">
                                                         {invoice.status !== 'paid' && (
                                                             <button
@@ -252,11 +352,11 @@ const BridgeFinance = () => {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 ) : activeTab === 'purchases' ? (
                     <>
@@ -264,28 +364,34 @@ const BridgeFinance = () => {
                             Pembayaran
                         </h3>
 
-                        {purchases.length === 0 ? (
-                            <div className="text-center py-8 text-silver-dark">
-                                <DollarSign className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p>Belum ada purchase. Klik "Buat Purchase" untuk memulai.</p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-accent-orange">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-accent-orange">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. Dokumen</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Vendor</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Judul</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah</th>
+                                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                                        <th className="px-4 py-3 text-center text-sm font-semibold text-white">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-dark-border">
+                                    {purchases.length === 0 ? (
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. Dokumen</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Vendor</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Judul</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Jumlah</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
-                                            <th className="px-4 py-3 text-center text-sm font-semibold text-white">Aksi</th>
+                                            <td colSpan="7" className="px-4 py-8 text-center text-silver-dark">
+                                                <DollarSign className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                                <p>Belum ada purchase. Klik "Buat Purchase" untuk memulai.</p>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-dark-border">
-                                        {purchases.map(purchase => (
-                                            <tr key={purchase.id} className="hover:bg-dark-surface smooth-transition">
+                                    ) : (
+                                        purchases.map(purchase => (
+                                            <tr
+                                                key={purchase.id}
+                                                className="hover:bg-dark-surface smooth-transition cursor-pointer"
+                                                onClick={() => setSelectedPurchase(purchase)}
+                                            >
                                                 <td className="px-4 py-3 text-sm text-silver-light font-medium">
                                                     {purchase.documentNumber}
                                                 </td>
@@ -309,7 +415,7 @@ const BridgeFinance = () => {
                                                         {purchase.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center justify-center gap-2">
                                                         {purchase.status !== 'paid' && (
                                                             <button
@@ -323,11 +429,11 @@ const BridgeFinance = () => {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 ) : activeTab === 'pos' ? (
                     <>
@@ -426,6 +532,85 @@ const BridgeFinance = () => {
                     onSubmit={addPurchaseOrder}
                     vendors={vendors}
                 />
+            )}
+
+            {/* Invoice Detail Modal */}
+            {selectedInvoice && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                    <div className="glass-card rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-dark-card border-b border-dark-border p-6 z-10 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold gradient-text">Detail Invoice</h2>
+                            <button onClick={() => setSelectedInvoice(null)} className="p-2 hover:bg-dark-surface rounded-lg">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><span className="font-semibold">No. Invoice:</span> {selectedInvoice.invoiceNumber}</div>
+                                <div><span className="font-semibold">Tanggal:</span> {new Date(selectedInvoice.date).toLocaleDateString('id-ID')}</div>
+                                <div><span className="font-semibold">Customer:</span> {selectedInvoice.customerName || selectedInvoice.customer}</div>
+                                <div><span className="font-semibold">Status:</span>
+                                    <span className={`ml-2 px-3 py-1 rounded-full text-xs ${selectedInvoice.status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                        {selectedInvoice.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <div><span className="font-semibold">Judul:</span> {selectedInvoice.title}</div>
+                            {selectedInvoice.pengajuanNumber && (
+                                <div><span className="font-semibold">Ref. Pendaftaran:</span> <span className="text-accent-blue">{selectedInvoice.pengajuanNumber}</span></div>
+                            )}
+                            <div className="border-t border-dark-border pt-4">
+                                <p className="font-semibold text-xl">Total: <span className="text-accent-green">Rp {formatCurrency(selectedInvoice.grandTotal)}</span></p>
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <Button onClick={() => handlePrint('invoice', selectedInvoice)} icon={FileText}>
+                                    Cetak Dokumen
+                                </Button>
+                                <Button variant="secondary" onClick={() => setSelectedInvoice(null)}>
+                                    Tutup
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Purchase Detail Modal */}
+            {selectedPurchase && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                    <div className="glass-card rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-dark-card border-b border-dark-border p-6 z-10 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold gradient-text">Detail Pembayaran</h2>
+                            <button onClick={() => setSelectedPurchase(null)} className="p-2 hover:bg-dark-surface rounded-lg">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><span className="font-semibold">No. Dokumen:</span> {selectedPurchase.documentNumber}</div>
+                                <div><span className="font-semibold">Tanggal:</span> {new Date(selectedPurchase.date).toLocaleDateString('id-ID')}</div>
+                                <div><span className="font-semibold">Vendor:</span> {selectedPurchase.vendor}</div>
+                                <div><span className="font-semibold">Status:</span>
+                                    <span className={`ml-2 px-3 py-1 rounded-full text-xs ${selectedPurchase.status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                        {selectedPurchase.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <div><span className="font-semibold">Judul:</span> {selectedPurchase.title}</div>
+                            <div className="border-t border-dark-border pt-4">
+                                <p className="font-semibold text-xl">Total: <span className="text-accent-red">Rp {formatCurrency(selectedPurchase.grandTotal)}</span></p>
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <Button onClick={() => handlePrint('purchase', selectedPurchase)} icon={FileText}>
+                                    Cetak Dokumen
+                                </Button>
+                                <Button variant="secondary" onClick={() => setSelectedPurchase(null)}>
+                                    Tutup
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
