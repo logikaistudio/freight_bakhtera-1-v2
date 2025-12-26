@@ -4,9 +4,14 @@ import Button from '../Common/Button';
 import LineItemManager from '../Common/LineItemManager';
 import QuotationSummary from '../Common/QuotationSummary';
 import { formatCurrency } from '../../utils/currencyFormatter';
+import { useData } from '../../context/DataContext';
 
 const POFormModal = ({ onClose, onSubmit, vendors }) => {
+    const { quotations = [] } = useData();
+    const approvedQuotations = quotations.filter(q => q.status === 'approved');
+
     const [formData, setFormData] = useState({
+        quotationId: '',
         vendorId: '',
         poDate: new Date().toISOString().split('T')[0],
         title: '',
@@ -42,10 +47,16 @@ const POFormModal = ({ onClose, onSubmit, vendors }) => {
             return;
         }
 
+        const selectedQuotation = formData.quotationId
+            ? approvedQuotations.find(q => q.id === formData.quotationId)
+            : null;
+
         const poData = {
             ...formData,
             vendorName: selectedVendor?.name || '',
             vendorNPWP: selectedVendor?.npwp || '',
+            quotationNumber: selectedQuotation?.quotationNumber || '',
+            customerName: selectedQuotation?.customer || '',
             itemsSubtotal,
             discountAmount,
             subtotalAfterDiscount,
@@ -109,6 +120,28 @@ const POFormModal = ({ onClose, onSubmit, vendors }) => {
                                     onChange={(e) => setFormData({ ...formData, poDate: e.target.value })}
                                     className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-silver-light focus:border-accent-purple focus:outline-none"
                                 />
+                            </div>
+
+                            {/* No. Pendaftaran (Quotation) - Optional */}
+                            <div>
+                                <label className="block text-sm font-medium text-silver mb-2">
+                                    No. Pendaftaran (Opsional)
+                                </label>
+                                <select
+                                    value={formData.quotationId}
+                                    onChange={(e) => setFormData({ ...formData, quotationId: e.target.value })}
+                                    className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-silver-light focus:border-accent-purple focus:outline-none"
+                                >
+                                    <option value="">-- Tidak ada / Manual --</option>
+                                    {approvedQuotations.map(q => (
+                                        <option key={q.id} value={q.id}>
+                                            {q.quotationNumber} - {q.customer}
+                                        </option>
+                                    ))}
+                                </select>
+                                {formData.quotationId && (
+                                    <p className="text-xs text-accent-purple mt-1">✓ PO akan terhubung dengan pendaftaran ini</p>
+                                )}
                             </div>
 
                             {/* Vendor Selection */}

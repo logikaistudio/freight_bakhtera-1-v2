@@ -345,18 +345,17 @@ const BridgeFinance = () => {
                                 <table className="w-full">
                                     <thead className="bg-accent-purple">
                                         <tr>
+                                            <th className="px-4 py-3 text-center text-sm font-semibold text-white">No</th>
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-white">No. PO</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Vendor</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">NPWP</th>
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-white">Tanggal</th>
+                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Vendor</th>
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-white">Judul</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Items</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-white">Total</th>
+                                            <th className="px-4 py-3 text-right text-sm font-semibold text-white">Nilai PO</th>
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-dark-border">
-                                        {purchaseOrders.map(po => {
+                                        {purchaseOrders.map((po, index) => {
                                             const statusColors = {
                                                 draft: 'bg-yellow-500/20 text-yellow-400',
                                                 sent: 'bg-blue-500/20 text-blue-400',
@@ -367,26 +366,23 @@ const BridgeFinance = () => {
 
                                             return (
                                                 <tr key={po.id} className="hover:bg-dark-surface smooth-transition">
+                                                    <td className="px-4 py-3 text-sm text-center text-silver-dark font-medium">
+                                                        {index + 1}
+                                                    </td>
                                                     <td className="px-4 py-3 text-sm text-silver-light font-medium">
                                                         {po.poNumber}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-silver">
-                                                        {po.vendorName}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-silver-dark font-mono text-xs">
-                                                        {po.vendorNPWP || '-'}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm text-silver-dark">
                                                         {new Date(po.poDate).toLocaleDateString('id-ID')}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm text-silver">
+                                                        {po.vendorName}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-silver">
                                                         {po.title}
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm text-silver-dark">
-                                                        {po.items?.length || 0} item(s)
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-accent-purple font-semibold">
-                                                        Rp {formatCurrency(po.grandTotal)}
+                                                    <td className="px-4 py-3 text-sm text-right text-accent-purple font-semibold">
+                                                        Rp {formatCurrency(po.subtotalAfterDiscount || po.itemsSubtotal || 0)}
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColors[po.status] || statusColors.draft}`}>
