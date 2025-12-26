@@ -791,6 +791,7 @@ export const DataProvider = ({ children }) => {
         localStorage.setItem('freight_inspections', JSON.stringify(inspections));
     }, [inspections]);
 
+    /*
     useEffect(() => {
         localStorage.setItem('freight_bc_codes', JSON.stringify(bcCodes));
     }, [bcCodes]);
