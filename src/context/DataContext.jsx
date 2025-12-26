@@ -573,6 +573,27 @@ export const DataProvider = ({ children }) => {
                 if (itemError) console.error('Error fetching Item master:', itemError);
                 else setItemMaster(itemData || []);
 
+                // Load Customers from Supabase (with Debug Logging)
+                console.log('🔄 Fetching customers from Supabase...');
+                const { data: customerData, error: customerError } = await supabase
+                    .from('freight_customers')
+                    .select('*');
+
+                if (customerError) {
+                    console.error('❌ Error fetching customers:', customerError);
+                } else if (customerData) {
+                    console.log(`✅ Loaded ${customerData.length} customers from Supabase:`, customerData);
+                    setCustomers(customerData);
+                }
+
+                // Load Vendors from Supabase
+                const { data: vendorData, error: vendorError } = await supabase
+                    .from('freight_vendors')
+                    .select('*');
+
+                if (vendorError) console.error('Error fetching vendors:', vendorError);
+                else if (vendorData) setVendors(vendorData);
+
                 // Load Transactions (Inbound, Outbound, Reject)
                 const { data: inData, error: inError } = await supabase.from('freight_inbound').select('*');
                 if (!inError) setInboundTransactions(inData || []);

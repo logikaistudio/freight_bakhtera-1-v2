@@ -28,18 +28,18 @@ export const testSupabaseConnection = async () => {
         console.log('🔌 Testing Supabase connection...');
         console.log('📍 URL:', supabaseUrl);
 
-        // Try to fetch from a system table to test connection
-        const { data, error } = await supabase
-            .from('_supabase_migrations')
-            .select('*')
-            .limit(1);
+        // Try to fetch from a real table to test connection
+        const { count, error } = await supabase
+            .from('freight_customers')
+            .select('*', { count: 'exact', head: true });
 
         if (error) {
-            // This error is expected if table doesn't exist yet
-            console.log('⚠️ Connection test (expected behavior if no tables exist):', error.message);
-            console.log('✅ Supabase client initialized successfully!');
-            return { success: true, message: 'Supabase client ready (no tables yet)' };
+            console.error('❌ Connection test failed:', error);
+            return { success: false, error: error.message };
         }
+
+        console.log('✅ Supabase connection successful! Customer count:', count);
+        return { success: true, message: `Connected to Supabase (Customers: ${count})` };
 
         console.log('✅ Supabase connection successful!');
         return { success: true, message: 'Connected to Supabase', data };
