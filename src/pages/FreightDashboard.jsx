@@ -73,7 +73,7 @@ const FreightDashboard = () => {
         <div className="space-y-8">
             {/* Header */}
             <div>
-                <h1 className="text-4xl font-bold gradient-text mb-2">Dasbor Bakhtera-1</h1>
+                <h1 className="text-4xl font-bold gradient-text mb-2">Dashboard Bakhtera-1</h1>
                 <p className="text-silver-dark">Ringkasan platform manajemen terintegrasi</p>
             </div>
 

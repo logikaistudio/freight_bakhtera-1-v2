@@ -44,7 +44,7 @@ const Sidebar = () => {
     const isActive = (path) => location.pathname === path;
 
     const mainMenuItems = [
-        { path: '/', label: 'Dasbor Bakhtera-1', icon: LayoutDashboard },
+        { path: '/', label: 'Dashboard Bakhtera-1', icon: LayoutDashboard },
         { path: '/blink', label: 'BLINK', subtitle: 'Management System', icon: Plane },
         { path: '/big', label: 'BIG', subtitle: 'Penyelenggara Acara', icon: Calendar },
         { path: '/bridge', label: 'BRIDGE', subtitle: 'Aset TPPB', icon: Building2 },
@@ -245,16 +245,16 @@ const Sidebar = () => {
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-dark-border text-center">
-                <p className="text-xs text-silver-dark mb-1">
+                <p className="text-xs text-silver-dark mb-0.5">
                     © 2024 Bakhtera-1 • v1.0.0
                 </p>
                 <a
                     href="https://logikai.studio"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] text-silver-dark/60 hover:text-accent-blue transition-colors uppercase tracking-widest font-medium"
+                    className="text-[10px] text-accent-orange hover:text-accent-orange/80 transition-colors font-medium"
                 >
-                    Powered by LogikAi.studio
+                    By : LogikAi.studio
                 </a>
             </div>
         </div>

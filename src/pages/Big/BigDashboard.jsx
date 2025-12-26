@@ -38,7 +38,7 @@ const BigDashboard = () => {
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <Calendar className="w-10 h-10 text-green-400" />
-                        <h1 className="text-4xl font-bold gradient-text">Big</h1>
+                        <h1 className="text-4xl font-bold gradient-text">BIG</h1>
                     </div>
                     <p className="text-silver-dark">Event Organizer Management</p>
                 </div>

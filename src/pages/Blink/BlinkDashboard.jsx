@@ -41,7 +41,7 @@ const BlinkDashboard = () => {
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <Plane className="w-10 h-10 text-blue-400" />
-                        <h1 className="text-4xl font-bold gradient-text">Blink</h1>
+                        <h1 className="text-4xl font-bold gradient-text">BLINK</h1>
                     </div>
                     <p className="text-silver-dark">Bakhtera-1 Management</p>
                 </div>

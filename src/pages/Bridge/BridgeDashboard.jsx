@@ -82,7 +82,7 @@ const BridgeDashboard = () => {
         <div className="p-6 space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold gradient-text">Dashboard Bridge TPPB</h1>
+                <h1 className="text-3xl font-bold gradient-text">Dashboard BRIDGE TPPB</h1>
                 <p className="text-silver-dark mt-1">Monitoring Transaksi & Status Dokumen TPPB</p>
             </div>
 
