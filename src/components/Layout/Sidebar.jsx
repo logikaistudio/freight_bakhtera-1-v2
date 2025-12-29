@@ -188,22 +188,30 @@ const Sidebar = () => {
 
                                 return (
                                     <div key={item.path}>
-                                        <button
-                                            onClick={() => setExpandedSection(isExpanded ? '' : 'pabean')}
-                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg smooth-transition ${isPabeanActive
-                                                ? 'bg-accent-green bg-opacity-20 text-accent-green'
-                                                : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface'
-                                                }`}
-                                        >
-                                            <item.icon className="w-5 h-5 flex-shrink-0" />
-                                            <div className="flex-1 text-left">
-                                                <div className="font-medium">{item.label}</div>
-                                                <div className={`text-xs ${isPabeanActive ? 'text-accent-green/70' : 'text-silver-dark'}`}>
-                                                    {item.subtitle}
+                                        <div className="flex items-center gap-1">
+                                            <Link
+                                                to={item.path}
+                                                onClick={() => isMobile && setIsOpen(false)}
+                                                className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-lg smooth-transition ${isPabeanActive
+                                                    ? 'bg-accent-green bg-opacity-20 text-accent-green'
+                                                    : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface'
+                                                    }`}
+                                            >
+                                                <item.icon className="w-5 h-5 flex-shrink-0" />
+                                                <div className="flex-1 text-left">
+                                                    <div className="font-medium">{item.label}</div>
+                                                    <div className={`text-xs ${isPabeanActive ? 'text-accent-green/70' : 'text-silver-dark'}`}>
+                                                        {item.subtitle}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                        </button>
+                                            </Link>
+                                            <button
+                                                onClick={() => setExpandedSection(isExpanded ? '' : 'pabean')}
+                                                className="p-2 hover:bg-dark-surface rounded-lg smooth-transition"
+                                            >
+                                                <ChevronRight className={`w-4 h-4 transition-transform text-silver-dark ${isExpanded ? 'rotate-90' : ''}`} />
+                                            </button>
+                                        </div>
 
                                         <AnimatePresence>
                                             {isExpanded && (
