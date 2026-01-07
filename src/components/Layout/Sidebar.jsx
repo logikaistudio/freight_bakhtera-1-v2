@@ -11,7 +11,12 @@ import {
     Wallet,
     Menu,
     X,
-    ChevronRight
+    ChevronRight,
+    TrendingUp,
+    Truck,
+    DollarSign,
+    Package,
+    FileCheck
 } from 'lucide-react';
 
 import { Sun, Moon } from 'lucide-react';
@@ -40,6 +45,7 @@ const Sidebar = () => {
     const location = useLocation();
     const [isOpen, setIsOpen] = useState(false);
     const [expandedSection, setExpandedSection] = useState('');
+    const [expandedCategories, setExpandedCategories] = useState(['marketing', 'operations', 'finance', 'data']); // All expanded by default
 
     const isActive = (path) => location.pathname === path;
 
@@ -55,6 +61,8 @@ const Sidebar = () => {
         { path: '/vendors', label: 'Manajemen Vendor', icon: Users },
         { path: '/customers', label: 'Manajemen Pelanggan', icon: UserCircle },
         { path: '/finance', label: 'Keuangan', icon: Wallet },
+        { path: '/finance/coa', label: 'Master Akun (COA)', icon: FileCheck },
+        { path: '/settings', label: 'Pengaturan Perusahaan', icon: Building2 },
     ];
 
     // Bridge submenu items
@@ -77,6 +85,76 @@ const Sidebar = () => {
         { path: '/pabean/barang-keluar', label: 'Barang Keluar' },
         { path: '/pabean/barang-reject', label: 'Barang Reject/Scrap' },
         { path: '/pabean/pergerakan', label: 'Pergerakan Barang' },
+    ];
+
+    // BIG submenu - Event Organizer
+    const bigSubMenuItems = [
+        { path: '/big', label: 'Dashboard', icon: LayoutDashboard },
+        {
+            type: 'category', label: '🎪 Event', items: [
+                { path: '/big/events', label: 'Manajemen Event' },
+                { path: '/big/quotations', label: 'Quotations' },
+                { path: '/big/costs', label: 'Costs (COGS)' },
+            ]
+        },
+        {
+            type: 'category', label: '💰 Finance', items: [
+                { type: 'divider', label: '📋 Transaksi' },
+                { path: '/big/invoices', label: 'Invoices' },
+                { path: '/big/ar', label: 'Piutang (AR)' },
+            ]
+        },
+    ];
+
+    // BLINK submenu - dengan Dashboard terpisah + 3 department categories + Master Data
+    const blinkSubMenuItems = [
+        // Dashboard - Standalone (outside categories)
+        { path: '/blink', label: 'Dashboard', icon: LayoutDashboard },
+
+        // Sales & Marketing Category
+        {
+            type: 'category', label: '📋 Sales & Marketing', items: [
+                { path: '/blink/quotations', label: 'Quotations' },
+                { path: '/blink/flow-monitor', label: 'Flow Monitor' },
+                { path: '/blink/sales-achievement', label: 'Sales Achievement' }
+            ]
+        },
+
+        // Operations Category
+        {
+            type: 'category', label: '🚚 Operations', items: [
+                { path: '/blink/shipments', label: 'Shipment Management' },
+                { path: '/blink/operations/bl', label: 'Document BL/AWB' },
+            ]
+        },
+
+        // Finance Category with Subcategories
+        {
+            type: 'category', label: '💰 Finance', items: [
+                // Subcategory: Transaksi
+                { type: 'divider', label: '📋 Transaksi' },
+                { path: '/blink/finance/invoices', label: 'Invoice' },
+                { path: '/blink/finance/purchase-orders', label: 'Purchase Order' },
+                { path: '/blink/finance/ar', label: 'Piutang (AR)' },
+                { path: '/blink/finance/ap', label: 'Hutang (AP)' },
+                // Subcategory: Pencatatan
+                { type: 'divider', label: '📝 Pencatatan' },
+                { path: '/blink/finance/general-journal', label: 'Jurnal Umum' },
+                { path: '/blink/finance/general-ledger', label: 'Buku Besar' },
+                { path: '/blink/finance/trial-balance', label: 'Neraca Saldo' },
+                // Subcategory: Laporan
+                { type: 'divider', label: '📊 Laporan' },
+                { path: '/blink/finance/profit-loss', label: 'Laba Rugi' },
+                { path: '/blink/finance/balance-sheet', label: 'Neraca' },
+            ]
+        },
+
+        // Master Data Category
+        {
+            type: 'category', label: '⚙️ Master Data', items: [
+                { path: '/blink/master/routes', label: 'Master Routes' },
+            ]
+        },
     ];
 
     const MenuLink = ({ item, isMobile = false }) => (
@@ -234,6 +312,271 @@ const Sidebar = () => {
                                                             {subItem.label}
                                                         </Link>
                                                     ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                );
+                            }
+
+                            // Special handling for BIG with submenu
+                            if (item.path === '/big') {
+                                const isExpanded = expandedSection === 'big' || location.pathname.startsWith('/big');
+                                const isBigActive = location.pathname.startsWith('/big');
+
+                                return (
+                                    <div key={item.path}>
+                                        <div className="flex items-center gap-1">
+                                            <Link
+                                                to={item.path}
+                                                onClick={() => isMobile && setIsOpen(false)}
+                                                className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-lg smooth-transition ${isBigActive
+                                                    ? 'text-silver-light'
+                                                    : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface'
+                                                    }`}
+                                            >
+                                                <item.icon className="w-5 h-5 flex-shrink-0" />
+                                                <div className="flex-1 text-left">
+                                                    <div className="font-medium">{item.label}</div>
+                                                    <div className={`text-xs ${isBigActive ? 'text-silver-dark' : 'text-silver-dark'}`}>
+                                                        {item.subtitle}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={() => setExpandedSection(isExpanded ? '' : 'big')}
+                                                className="p-2 hover:bg-dark-surface rounded-lg smooth-transition"
+                                            >
+                                                <ChevronRight className={`w-4 h-4 transition-transform text-silver-dark ${isExpanded ? 'rotate-90' : ''}`} />
+                                            </button>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {isExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="ml-8 mt-1 space-y-1 overflow-hidden"
+                                                >
+                                                    {bigSubMenuItems.map((subItem, idx) => {
+                                                        // Render category dengan nested items
+                                                        if (subItem.type === 'category') {
+                                                            const categoryKey = 'big-' + subItem.label.toLowerCase().split(' ').pop();
+                                                            const isCategoryExpanded = expandedCategories.includes(categoryKey);
+
+                                                            return (
+                                                                <div key={`category-${idx}`}>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setExpandedCategories(prev =>
+                                                                                prev.includes(categoryKey)
+                                                                                    ? prev.filter(c => c !== categoryKey)
+                                                                                    : [...prev, categoryKey]
+                                                                            );
+                                                                        }}
+                                                                        className="w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-silver hover:text-silver-light smooth-transition"
+                                                                    >
+                                                                        <span>{subItem.label}</span>
+                                                                        <ChevronRight className={`w-3 h-3 transition-transform ${isCategoryExpanded ? 'rotate-90' : ''}`} />
+                                                                    </button>
+
+                                                                    <AnimatePresence>
+                                                                        {isCategoryExpanded && (
+                                                                            <motion.div
+                                                                                initial={{ height: 0, opacity: 0 }}
+                                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                                exit={{ height: 0, opacity: 0 }}
+                                                                                className="overflow-hidden"
+                                                                            >
+                                                                                {subItem.items.map((menuItem, itemIdx) => {
+                                                                                    if (menuItem.type === 'divider') {
+                                                                                        return (
+                                                                                            <div key={`divider-${itemIdx}`} className="pl-6 pr-4 pt-3 pb-1 border-t border-dark-border/30 mt-1 first:mt-0 first:border-t-0">
+                                                                                                <span className="text-[10px] font-bold text-silver uppercase tracking-wider">
+                                                                                                    {menuItem.label}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+
+                                                                                    return (
+                                                                                        <Link
+                                                                                            key={menuItem.path}
+                                                                                            to={menuItem.path}
+                                                                                            onClick={() => isMobile && setIsOpen(false)}
+                                                                                            className={`block pl-12 pr-4 py-1.5 text-xs smooth-transition border-l-2 ml-4 ${isActive(menuItem.path)
+                                                                                                ? 'bg-accent-orange/20 text-accent-orange font-medium border-accent-orange'
+                                                                                                : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface/50 border-transparent hover:border-silver-dark/50'
+                                                                                                }`}
+                                                                                        >
+                                                                                            {menuItem.label}
+                                                                                        </Link>
+                                                                                    );
+                                                                                })}
+                                                                            </motion.div>
+                                                                        )}
+                                                                    </AnimatePresence>
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        // Standalone menu items
+                                                        return (
+                                                            <Link
+                                                                key={subItem.path}
+                                                                to={subItem.path}
+                                                                onClick={() => isMobile && setIsOpen(false)}
+                                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm smooth-transition ${isActive(subItem.path)
+                                                                    ? 'bg-accent-orange text-white'
+                                                                    : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface'
+                                                                    }`}
+                                                            >
+                                                                {subItem.icon && <subItem.icon className="w-4 h-4" />}
+                                                                <span>{subItem.label}</span>
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                );
+                            }
+
+                            // Special handling for BLINK with submenu
+                            if (item.path === '/blink') {
+                                const isExpanded = expandedSection === 'blink' || location.pathname.startsWith('/blink');
+                                const isBlinkActive = location.pathname.startsWith('/blink');
+
+                                return (
+                                    <div key={item.path}>
+                                        <div className="flex items-center gap-1">
+                                            <Link
+                                                to={item.path}
+                                                onClick={() => isMobile && setIsOpen(false)}
+                                                className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-lg smooth-transition ${isBlinkActive
+                                                    ? 'text-silver-light'
+                                                    : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface'
+                                                    }`}
+                                            >
+                                                <item.icon className="w-5 h-5 flex-shrink-0" />
+                                                <div className="flex-1 text-left">
+                                                    <div className="font-medium">{item.label}</div>
+                                                    <div className={`text-xs ${isBlinkActive ? 'text-silver-dark' : 'text-silver-dark'}`}>
+                                                        {item.subtitle}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={() => setExpandedSection(isExpanded ? '' : 'blink')}
+                                                className="p-2 hover:bg-dark-surface rounded-lg smooth-transition"
+                                            >
+                                                <ChevronRight className={`w-4 h-4 transition-transform text-silver-dark ${isExpanded ? 'rotate-90' : ''}`} />
+                                            </button>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {isExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="ml-8 mt-1 space-y-1 overflow-hidden"
+                                                >
+                                                    {blinkSubMenuItems.map((subItem, idx) => {
+                                                        // Render category dengan nested items
+                                                        if (subItem.type === 'category') {
+                                                            const categoryKey = subItem.label.toLowerCase().split(' ').pop(); // 'sales', 'operations', 'finance'
+                                                            const isCategoryExpanded = expandedCategories.includes(categoryKey);
+
+                                                            return (
+                                                                <div key={`category-${idx}`}>
+                                                                    {/* Category Header - Clickable */}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setExpandedCategories(prev =>
+                                                                                prev.includes(categoryKey)
+                                                                                    ? prev.filter(c => c !== categoryKey)
+                                                                                    : [...prev, categoryKey]
+                                                                            );
+                                                                        }}
+                                                                        className="w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-silver hover:text-silver-light smooth-transition"
+                                                                    >
+                                                                        <span>{subItem.label}</span>
+                                                                        <ChevronRight className={`w-3 h-3 transition-transform ${isCategoryExpanded ? 'rotate-90' : ''}`} />
+                                                                    </button>
+
+                                                                    {/* Category Items - dengan indentation */}
+                                                                    <AnimatePresence>
+                                                                        {isCategoryExpanded && (
+                                                                            <motion.div
+                                                                                initial={{ height: 0, opacity: 0 }}
+                                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                                exit={{ height: 0, opacity: 0 }}
+                                                                                className="overflow-hidden"
+                                                                            >
+                                                                                {subItem.items.map((item, itemIdx) => {
+                                                                                    // Handle divider type for subcategory headers
+                                                                                    if (item.type === 'divider') {
+                                                                                        return (
+                                                                                            <div key={`divider-${itemIdx}`} className="pl-6 pr-4 pt-3 pb-1 border-t border-dark-border/30 mt-1 first:mt-0 first:border-t-0">
+                                                                                                <span className="text-[10px] font-bold text-silver uppercase tracking-wider">
+                                                                                                    {item.label}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+
+                                                                                    // Regular menu item with indentation
+                                                                                    return (
+                                                                                        <Link
+                                                                                            key={item.path}
+                                                                                            to={item.path}
+                                                                                            onClick={() => isMobile && setIsOpen(false)}
+                                                                                            className={`block pl-12 pr-4 py-1.5 text-xs smooth-transition border-l-2 ml-4 ${isActive(item.path)
+                                                                                                ? 'bg-accent-orange/20 text-accent-orange font-medium border-accent-orange'
+                                                                                                : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface/50 border-transparent hover:border-silver-dark/50'
+                                                                                                }`}
+                                                                                        >
+                                                                                            {item.label}
+                                                                                        </Link>
+                                                                                    );
+                                                                                })}
+                                                                            </motion.div>
+                                                                        )}
+                                                                    </AnimatePresence>
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        // Render standalone menu items (non-category)
+                                                        // Handle divider type for subcategory headers
+                                                        if (subItem.type === 'divider') {
+                                                            return (
+                                                                <div key={`divider-${idx}`} className="px-3 pt-4 pb-1 border-t border-dark-border/30 mt-2 first:mt-0 first:border-t-0">
+                                                                    <span className="text-xs font-bold text-silver uppercase tracking-wider">
+                                                                        {subItem.label}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <Link
+                                                                key={subItem.path}
+                                                                to={subItem.path}
+                                                                onClick={() => isMobile && setIsOpen(false)}
+                                                                className={`flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-r-lg text-xs smooth-transition border-l-2 ${isActive(subItem.path)
+                                                                    ? 'bg-accent-orange/20 text-accent-orange font-medium border-accent-orange'
+                                                                    : 'text-silver-dark hover:text-silver-light hover:bg-dark-surface/50 font-normal border-transparent hover:border-silver-dark/30'
+                                                                    }`}
+                                                            >
+                                                                {subItem.icon && <subItem.icon className="w-3 h-3" />}
+                                                                <span>{subItem.label}</span>
+                                                            </Link>
+                                                        );
+                                                    })}
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>

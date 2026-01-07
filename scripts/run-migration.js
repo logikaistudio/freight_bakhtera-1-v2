@@ -1,94 +1,44 @@
-/**
- * Run database migrations on Supabase
- * This script executes the SQL migration file to create all tables
- */
-
-import { createClient } from '@supabase/supabase-js';
+// Auto-execute Supabase Migration
+import { supabase } from './src/lib/supabase.js';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+console.log('🚀 Starting Supabase migration...');
 
-// Supabase configuration
-const supabaseUrl = 'https://nkyoszmtyrpdwfjxggmb.supabase.co';
-const supabaseKey = 'sb_publishable_GhpLPJQyE7IIlmFStBqKVQ_aKcbgleV';
+// Read migration SQL
+const migrationSQL = fs.readFileSync(
+    '/Users/hoeltz/Documents/GitHub/FreightOne/supabase/migrations/006_blink_module_schema.sql',
+    'utf8'
+);
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('📄 Migration SQL loaded');
 
+// Try to execute via RPC (requires pg_execute function in Supabase)
 async function runMigration() {
     try {
-        console.log('🚀 Starting database migration...\n');
-
-        // Read the SQL migration file
-        const migrationPath = path.join(__dirname, '../supabase/migrations/001_initial_schema.sql');
-        const sql = fs.readFileSync(migrationPath, 'utf8');
-
-        console.log('📄 Migration file loaded successfully');
-        console.log(`📊 SQL length: ${sql.length} characters\n`);
-
-        // Execute the SQL
-        console.log('⚙️  Executing migration...');
-        const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql });
+        // Attempt 1: Use raw SQL execution if available
+        const { data, error } = await supabase.rpc('exec_sql', {
+            sql: migrationSQL
+        });
 
         if (error) {
-            console.error('❌ Migration failed:', error);
-            throw error;
+            console.error('❌ RPC Method failed:', error.message);
+            console.log('\n⚠️  This is expected - need manual execution via Dashboard');
+            console.log('\n📋 SOLUTION:');
+            console.log('1. Open: https://nkyoszmtyrpdwfjxggmb.supabase.co');
+            console.log('2. Go to SQL Editor → New Query');
+            console.log('3. Copy-paste from: supabase/migrations/006_blink_module_schema.sql');
+            console.log('4. Click Run');
+            return false;
         }
 
-        console.log('✅ Migration executed successfully!\n');
-
-        // Verify tables were created
-        console.log('🔍 Verifying tables...');
-        const tables = [
-            'theme',
-            'freight_vendors',
-            'freight_customers',
-            'freight_bc_codes',
-            'freight_quotations',
-            'freight_invoices',
-            'freight_inbound',
-            'freight_outbound',
-            'freight_reject',
-            'freight_warehouse',
-            'freight_inventory',
-            'freight_mutation_logs',
-            'freight_movements',
-            'freight_inventory_version',
-            'freight_customs',
-            'freight_inspections',
-            'freight_purchases',
-            'freight_finance',
-            'freight_shipments',
-            'freight_assets',
-            'freight_events'
-        ];
-
-        let successCount = 0;
-        for (const table of tables) {
-            const { data, error } = await supabase.from(table).select('*').limit(1);
-            if (!error) {
-                console.log(`  ✓ ${table}`);
-                successCount++;
-            } else {
-                console.log(`  ✗ ${table} - ${error.message}`);
-            }
-        }
-
-        console.log(`\n📊 Summary: ${successCount}/${tables.length} tables verified`);
-
-        if (successCount === tables.length) {
-            console.log('\n🎉 All tables created successfully!');
-        } else {
-            console.log('\n⚠️  Some tables may not have been created. Check errors above.');
-        }
+        console.log('✅ Migration executed successfully!');
+        console.log('Data:', data);
+        return true;
 
     } catch (err) {
-        console.error('\n💥 Fatal error:', err);
-        process.exit(1);
+        console.error('❌ Error:', err.message);
+        return false;
     }
 }
 
-// Run the migration
 runMigration();

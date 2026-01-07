@@ -6,18 +6,23 @@ import Button from '../../components/Common/Button';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Currency formatter for Indonesian format (xxx.xxx.xxx)
+const formatCurrency = (value) => {
+    const num = parseFloat(value) || 0;
+    return num.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+
 const EventManagement = () => {
     const { events, addEvent, updateEvent, deleteEvent, customers } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
     const [formData, setFormData] = useState({
-        name: '',
-        date: '',
-        location: '',
-        customerId: '',
-        budget: '',
+        event_name: '',
+        event_date: '',
+        venue: '',
+        client_id: '',
+        description: '',
         status: 'planning',
-        notes: '',
     });
 
     const navigate = useNavigate();
@@ -26,17 +31,23 @@ const EventManagement = () => {
     const handleOpenModal = (event = null) => {
         if (event) {
             setEditingEvent(event);
-            setFormData(event);
+            setFormData({
+                event_name: event.event_name || '',
+                event_date: event.event_date || '',
+                venue: event.venue || '',
+                client_id: event.client_id || '',
+                description: event.description || '',
+                status: event.status || 'planning',
+            });
         } else {
             setEditingEvent(null);
             setFormData({
-                name: '',
-                date: '',
-                location: '',
-                customerId: '',
-                budget: '',
+                event_name: '',
+                event_date: '',
+                venue: '',
+                client_id: '',
+                description: '',
                 status: 'planning',
-                notes: '',
             });
         }
         setIsModalOpen(true);
@@ -44,11 +55,14 @@ const EventManagement = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const customer = customers.find((c) => c.id === formData.customerId);
 
         const eventData = {
-            ...formData,
-            customerName: customer?.name || '',
+            event_name: formData.event_name,
+            event_date: formData.event_date || null,
+            venue: formData.venue,
+            client_id: formData.client_id || null,
+            description: formData.description,
+            status: formData.status,
         };
 
         if (editingEvent) {
@@ -60,42 +74,47 @@ const EventManagement = () => {
     };
 
     const handleRemove = (event) => {
-        if (window.confirm(`Are you sure you want to delete ${event.name}?`)) {
+        if (window.confirm(`Are you sure you want to delete ${event.event_name}?`)) {
             deleteEvent(event.id);
         }
     };
 
+    // Get customer name by id
+    const getCustomerName = (clientId) => {
+        const customer = customers.find(c => c.id === clientId);
+        return customer?.name || '-';
+    };
+
     const columns = [
-        { header: 'Event Name', key: 'name' },
+        { header: 'Event Name', key: 'event_name' },
         {
             header: 'Date',
-            key: 'date',
-            render: (row) => new Date(row.date).toLocaleDateString('id-ID'),
+            key: 'event_date',
+            render: (row) => row.event_date ? new Date(row.event_date).toLocaleDateString('id-ID') : '-',
         },
-        { header: 'Location', key: 'location' },
-        { header: 'Customer', key: 'customerName' },
+        { header: 'Venue', key: 'venue' },
+        {
+            header: 'Customer',
+            key: 'client_id',
+            render: (row) => getCustomerName(row.client_id),
+        },
         {
             header: 'Status',
             key: 'status',
             render: (row) => (
                 <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${row.status === 'completed'
-                            ? 'bg-green-500/20 text-green-400'
-                            : row.status === 'ongoing'
-                                ? 'bg-purple-500/20 text-purple-400'
-                                : row.status === 'confirmed'
-                                    ? 'bg-blue-500/20 text-blue-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
+                        ? 'bg-green-500/20 text-green-400'
+                        : row.status === 'ongoing'
+                            ? 'bg-purple-500/20 text-purple-400'
+                            : row.status === 'confirmed'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : 'bg-yellow-500/20 text-yellow-400'
                         }`}
                 >
                     {row.status}
                 </span>
             ),
-        },
-        {
-            header: 'Budget',
-            key: 'budget',
-            render: (row) => `Rp ${parseFloat(row.budget || 0).toLocaleString('id-ID')}`,
         },
     ];
 
@@ -122,8 +141,7 @@ const EventManagement = () => {
             <DataTable
                 data={events}
                 columns={columns}
-                onEdit={handleOpenModal}
-                onRemove={handleRemove}
+                onRowClick={handleOpenModal}
                 searchPlaceholder="Search events..."
                 emptyMessage="No events found. Click 'Add Event' to get started."
             />
@@ -142,8 +160,8 @@ const EventManagement = () => {
                         <input
                             type="text"
                             required
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            value={formData.event_name}
+                            onChange={(e) => setFormData({ ...formData, event_name: e.target.value })}
                             placeholder="Enter event name"
                             className="w-full"
                         />
@@ -152,27 +170,25 @@ const EventManagement = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-silver-dark mb-2">
-                                Date *
+                                Date
                             </label>
                             <input
                                 type="date"
-                                required
-                                value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                value={formData.event_date}
+                                onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
                                 className="w-full"
                             />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-silver-dark mb-2">
-                                Location *
+                                Venue
                             </label>
                             <input
                                 type="text"
-                                required
-                                value={formData.location}
-                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                placeholder="Event location"
+                                value={formData.venue}
+                                onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                                placeholder="Event venue"
                                 className="w-full"
                             />
                         </div>
@@ -180,12 +196,11 @@ const EventManagement = () => {
 
                     <div>
                         <label className="block text-sm font-medium text-silver-dark mb-2">
-                            Customer *
+                            Customer
                         </label>
                         <select
-                            required
-                            value={formData.customerId}
-                            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                            value={formData.client_id}
+                            onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
                             className="w-full"
                         >
                             <option value="">Select customer</option>
@@ -197,60 +212,58 @@ const EventManagement = () => {
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-silver-dark mb-2">
-                                Budget *
-                            </label>
-                            <input
-                                type="number"
-                                required
-                                min="0"
-                                step="0.01"
-                                value={formData.budget}
-                                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                                placeholder="0.00"
-                                className="w-full"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-silver-dark mb-2">
-                                Status *
-                            </label>
-                            <select
-                                required
-                                value={formData.status}
-                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                className="w-full"
-                            >
-                                {statuses.map((status) => (
-                                    <option key={status} value={status}>
-                                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-silver-dark mb-2">
+                            Status *
+                        </label>
+                        <select
+                            required
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            className="w-full"
+                        >
+                            {statuses.map((status) => (
+                                <option key={status} value={status}>
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-silver-dark mb-2">
-                            Notes
+                            Description
                         </label>
                         <textarea
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            placeholder="Event details and notes"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Event details and description"
                             rows={3}
                             className="w-full"
                         />
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-6">
-                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button type="submit">{editingEvent ? 'Update' : 'Create'} Event</Button>
+                    <div className="flex justify-between gap-3 mt-6">
+                        {editingEvent ? (
+                            <Button
+                                type="button"
+                                variant="danger"
+                                onClick={() => {
+                                    if (window.confirm(`Are you sure you want to delete ${editingEvent.event_name}?`)) {
+                                        deleteEvent(editingEvent.id);
+                                        setIsModalOpen(false);
+                                    }
+                                }}
+                            >
+                                Delete
+                            </Button>
+                        ) : <div />}
+                        <div className="flex gap-3">
+                            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit">{editingEvent ? 'Update' : 'Create'} Event</Button>
+                        </div>
                     </div>
                 </form>
             </Modal>

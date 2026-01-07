@@ -16,6 +16,8 @@ export const DataProvider = ({ children }) => {
     const [vendors, setVendors] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [finance, setFinance] = useState([]);
+    const [companySettings, setCompanySettings] = useState(null);
+    const [bankAccounts, setBankAccounts] = useState([]);
 
     // Module-specific data
     const [shipments, setShipments] = useState([]);
@@ -632,11 +634,15 @@ export const DataProvider = ({ children }) => {
                 const { data: assetData, error: assetError } = await supabase.from('freight_assets').select('*');
                 if (!assetError) setAssets(assetData || []);
 
-                const { data: eventData, error: eventError } = await supabase.from('freight_events').select('*');
+                const { data: eventData, error: eventError } = await supabase.from('big_events').select('*');
                 if (!eventError) setEvents(eventData || []);
 
                 const { data: moveData, error: moveError } = await supabase.from('freight_movements').select('*');
                 if (!moveError) setGoodsMovements(moveData || []);
+
+                // Load Company Settings
+                await fetchCompanySettings();
+
 
             } catch (error) {
                 console.error("Failed to load data from Supabase:", error);
@@ -723,7 +729,7 @@ export const DataProvider = ({ children }) => {
                 else if (payload.eventType === 'UPDATE') setAssets(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
                 else if (payload.eventType === 'DELETE') setAssets(prev => prev.filter(item => item.id !== payload.old.id));
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'freight_events' }, (payload) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'big_events' }, (payload) => {
                 console.log('⚡ Realtime Event Update:', payload);
                 if (payload.eventType === 'INSERT') setEvents(prev => [...prev, payload.new]);
                 else if (payload.eventType === 'UPDATE') setEvents(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
@@ -987,24 +993,30 @@ export const DataProvider = ({ children }) => {
 
     // Event CRUD operations (Big module)
     const addEvent = async (event) => {
-        const newEvent = {
-            ...event,
-            id: Date.now().toString(),
-            created_at: new Date().toISOString(),
+        // Prepare event data - let database generate UUID for id
+        const eventData = {
+            event_name: event.event_name,
+            client_id: event.client_id || null,
+            event_date: event.event_date || null,
+            event_end_date: event.event_end_date || null,
+            venue: event.venue || null,
+            status: event.status || 'planning',
+            description: event.description || null,
         };
 
-        const { error } = await supabase.from('freight_events').insert([newEvent]);
+        const { data, error } = await supabase.from('big_events').insert([eventData]).select();
         if (error) {
             console.error('Error adding event:', error);
             return;
         }
 
+        const newEvent = data[0];
         setEvents(prev => [...prev, newEvent]);
         return newEvent;
     };
 
     const updateEvent = async (id, updatedEvent) => {
-        const { error } = await supabase.from('freight_events').update(updatedEvent).eq('id', id);
+        const { error } = await supabase.from('big_events').update(updatedEvent).eq('id', id);
         if (error) {
             console.error('Error updating event:', error);
             return;
@@ -1013,7 +1025,7 @@ export const DataProvider = ({ children }) => {
     };
 
     const deleteEvent = async (id) => {
-        const { error } = await supabase.from('freight_events').delete().eq('id', id);
+        const { error } = await supabase.from('big_events').delete().eq('id', id);
         if (error) {
             console.error('Error deleting event:', error);
             return;
@@ -1747,6 +1759,175 @@ export const DataProvider = ({ children }) => {
         return vendors.filter(v => v.status !== 'inactive');
     };
 
+    // Company Settings operations
+    const fetchCompanySettings = async () => {
+        try {
+            // Fetch company settings
+            const { data: settingsData, error: settingsError } = await supabase
+                .from('company_settings')
+                .select('*')
+                .single();
+
+            if (settingsError && settingsError.code !== 'PGRST116') {
+                console.error('Error fetching company settings:', settingsError);
+            } else if (settingsData) {
+                setCompanySettings(settingsData);
+            }
+
+            // Fetch bank accounts
+            const { data: bankData, error: bankError } = await supabase
+                .from('company_bank_accounts')
+                .select('*')
+                .order('display_order', { ascending: true });
+
+            if (bankError) {
+                console.error('Error fetching bank accounts:', bankError);
+            } else if (bankData) {
+                setBankAccounts(bankData);
+            }
+        } catch (error) {
+            console.error('Error in fetchCompanySettings:', error);
+        }
+    };
+
+    const updateCompanySettings = async (settings) => {
+        try {
+            if (companySettings?.id) {
+                // Update existing
+                const { error } = await supabase
+                    .from('company_settings')
+                    .update({
+                        company_name: settings.company_name,
+                        company_address: settings.company_address,
+                        company_phone: settings.company_phone,
+                        company_fax: settings.company_fax,
+                        company_email: settings.company_email,
+                        company_npwp: settings.company_npwp,
+                        logo_url: settings.logo_url,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', companySettings.id);
+
+                if (error) throw error;
+
+                setCompanySettings({ ...companySettings, ...settings });
+            } else {
+                // Insert new
+                const { data, error } = await supabase
+                    .from('company_settings')
+                    .insert([settings])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                setCompanySettings(data);
+            }
+        } catch (error) {
+            console.error('Error updating company settings:', error);
+            throw error;
+        }
+    };
+
+    const uploadCompanyLogo = async (file) => {
+        try {
+            const fileName = `logo-${Date.now()}.${file.name.split('.').pop()}`;
+            const filePath = `${fileName}`;
+
+            // Upload to Supabase Storage
+            const { data, error } = await supabase.storage
+                .from('company-logos')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (error) throw error;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('company-logos')
+                .getPublicUrl(filePath);
+
+            // Update company settings with new logo URL
+            await updateCompanySettings({
+                ...companySettings,
+                logo_url: publicUrl
+            });
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Error uploading logo:', error);
+            throw error;
+        }
+    };
+
+    const addBankAccount = async (bankAccount) => {
+        try {
+            if (!companySettings?.id) {
+                throw new Error('Company settings not found. Please save company information first.');
+            }
+
+            const newBankAccount = {
+                ...bankAccount,
+                company_settings_id: companySettings.id,
+                display_order: bankAccounts.length + 1,
+                created_at: new Date().toISOString()
+            };
+
+            const { data, error } = await supabase
+                .from('company_bank_accounts')
+                .insert([newBankAccount])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setBankAccounts([...bankAccounts, data]);
+        } catch (error) {
+            console.error('Error adding bank account:', error);
+            throw error;
+        }
+    };
+
+    const updateBankAccount = async (id, updatedBankAccount) => {
+        try {
+            const { error } = await supabase
+                .from('company_bank_accounts')
+                .update({
+                    ...updatedBankAccount,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setBankAccounts(prev =>
+                prev.map(bank => bank.id === id ? { ...bank, ...updatedBankAccount } : bank)
+            );
+        } catch (error) {
+            console.error('Error updating bank account:', error);
+            throw error;
+        }
+    };
+
+    const deleteBankAccount = async (id) => {
+        try {
+            const { error } = await supabase
+                .from('company_bank_accounts')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setBankAccounts(prev => prev.filter(bank => bank.id !== id));
+        } catch (error) {
+            console.error('Error deleting bank account:', error);
+            throw error;
+        }
+    };
+
+
     // BC Code CRUD operations
     const addBCCode = (bcCode) => {
         const newBCCode = {
@@ -2013,6 +2194,16 @@ export const DataProvider = ({ children }) => {
         getApprovedPengajuan,
         getActiveCustomers,
         getActiveVendors,
+
+        // Company Settings operations
+        companySettings,
+        bankAccounts,
+        fetchCompanySettings,
+        updateCompanySettings,
+        addBankAccount,
+        updateBankAccount,
+        deleteBankAccount,
+        uploadCompanyLogo,
     };
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

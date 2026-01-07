@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import Button from '../../components/Common/Button';
+import {
+    Scale, Search, Calendar, Download, Filter,
+    CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet, FileText
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+
+const TrialBalance = () => {
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [balances, setBalances] = useState([]);
+    const [totals, setTotals] = useState({ opening: 0, debit: 0, credit: 0, closing: 0 });
+
+    // Default: Current Year
+    const today = new Date();
+    const [dateRange, setDateRange] = useState({
+        start: new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0],
+        end: today.toISOString().split('T')[0]
+    });
+
+    useEffect(() => {
+        fetchTrialBalance();
+    }, [dateRange]);
+
+    const fetchTrialBalance = async () => {
+        try {
+            setLoading(true);
+
+            // 1. Fetch COA
+            const { data: accounts, error: coaError } = await supabase
+                .from('finance_coa')
+                .select('*')
+                .order('code', { ascending: true });
+
+            if (coaError) throw coaError;
+
+            // 2. Fetch Journal Entries (ALL TIME for Integrity, but split by logic)
+            // Ideally we fetch Opening Balance (before start) and Movements (within range)
+
+            // Optimization: Fetch aggregated data if possible, but for granular control we fetch entries.
+            // CAUTION: Large datasets might need pagination or backend aggregation. 
+            // For now, we fetch all relevant entries.
+
+            const { data: entries, error: entriesError } = await supabase
+                .from('blink_journal_entries')
+                .select('coa_id, debit, credit, entry_date')
+                .lte('entry_date', dateRange.end); // Fetch up to end date
+
+            if (entriesError) throw entriesError;
+
+            // 3. Process Data
+            const accMap = {};
+
+            accounts.forEach(acc => {
+                accMap[acc.id] = {
+                    ...acc,
+                    opening: 0,
+                    debitPeriod: 0,
+                    creditPeriod: 0,
+                    closing: 0
+                };
+            });
+
+            entries.forEach(e => {
+                const acc = accMap[e.coa_id];
+                if (!acc) return; // Should not happen if referential integrity is good
+
+                const debit = e.debit || 0;
+                const credit = e.credit || 0;
+
+                if (e.entry_date < dateRange.start) {
+                    // It's Opening Balance
+                    // Normal Balance Logic? 
+                    // Trial Balance usually shows Debit/Credit raw sum, OR Net Balance.
+                    // Usually: Opening (Net), Debit Mutation, Credit Mutation, Closing (Net).
+
+                    const isNormalCredit = ['LIABILITY', 'EQUITY', 'REVENUE'].includes(acc.type);
+                    if (isNormalCredit) {
+                        acc.opening += (credit - debit);
+                    } else {
+                        acc.opening += (debit - credit);
+                    }
+                } else {
+                    // It's Period Movement
+                    acc.debitPeriod += debit;
+                    acc.creditPeriod += credit;
+                }
+            });
+
+            // Calculate Closing
+            let totalOpening = 0;
+            let totalDebit = 0;
+            let totalCredit = 0;
+            let totalClosing = 0;
+
+            const processed = Object.values(accMap).map(acc => {
+                const isNormalCredit = ['LIABILITY', 'EQUITY', 'REVENUE'].includes(acc.type);
+
+                // Closing Balance Calculation
+                // Closing = Opening + (Debit/Credit depending on type)
+                // Actually: Opening + PeriodMovementNet
+                if (isNormalCredit) {
+                    acc.closing = acc.opening + acc.creditPeriod - acc.debitPeriod;
+                } else {
+                    acc.closing = acc.opening + acc.debitPeriod - acc.creditPeriod;
+                }
+
+                // If values are all zero, maybe filter out? But usually TB shows all active accounts.
+                // Should at least show if there's any history or balance.
+
+                return acc;
+            }).filter(acc => acc.opening !== 0 || acc.debitPeriod !== 0 || acc.creditPeriod !== 0);
+
+            // Compute Report Totals
+            // Note: For "Total Opening" and "Total Closing", simply summing mixed Debit/Credit normal balances might be zero (if balanced).
+            // Standard TB shows Total Debit Column vs Total Credit Column for Closing. 
+            // Here we show Net Balances, so Sum should be 0.
+
+            processed.forEach(acc => {
+                totalDebit += acc.debitPeriod;
+                totalCredit += acc.creditPeriod;
+
+                // For totals of Net balances (Opening/Closing), it should sum to 0
+                totalOpening += acc.opening;
+                totalClosing += acc.closing; // Should be near 0
+            });
+
+            setBalances(processed);
+            setTotals({
+                opening: totalOpening,
+                debit: totalDebit,
+                credit: totalCredit,
+                closing: totalClosing
+            });
+
+        } catch (error) {
+            console.error('Error fetching TB:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Grouping Logic
+    const groupedBalances = {
+        ASSET: balances.filter(b => b.type === 'ASSET'),
+        LIABILITY: balances.filter(b => b.type === 'LIABILITY'),
+        EQUITY: balances.filter(b => b.type === 'EQUITY'),
+        REVENUE: balances.filter(b => b.type === 'REVENUE'),
+        EXPENSE: balances.filter(b => ['EXPENSE', 'COGS', 'DIRECT_COST'].includes(b.type)),
+        OTHER: balances.filter(b => ['OTHER_INCOME', 'OTHER_EXPENSE'].includes(b.type))
+    };
+
+    const handleAccountClick = (accountId) => {
+        navigate('/blink/finance/general-ledger', { state: { preSelectedAccount: accountId } });
+    };
+
+    const formatCurrency = (val) => {
+        if (!val && val !== 0) return '-';
+        return val.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    };
+
+    const AccountGroupTable = ({ title, data, colorClass = "text-silver-light" }) => {
+        if (data.length === 0) return null;
+
+        const groupTotal = data.reduce((acc, curr) => ({
+            opening: acc.opening + curr.opening,
+            debit: acc.debit + curr.debitPeriod,
+            credit: acc.credit + curr.creditPeriod,
+            closing: acc.closing + curr.closing
+        }), { opening: 0, debit: 0, credit: 0, closing: 0 });
+
+        return (
+            <div className="mb-8">
+                <h3 className={`font-bold text-lg mb-2 pl-2 border-l-4 ${colorClass.replace('text-', 'border-')} ${colorClass}`}>
+                    {title}
+                </h3>
+                <div className="glass-card rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead className="bg-[#0070BB] text-white opacity-90">
+                            <tr>
+                                <th className="px-4 py-2 text-left font-semibold w-24">Kode</th>
+                                <th className="px-4 py-2 text-left font-semibold">Nama Akun</th>
+                                <th className="px-4 py-2 text-right font-semibold">Saldo Awal</th>
+                                <th className="px-4 py-2 text-right font-semibold bg-white/10">Mutasi Debit</th>
+                                <th className="px-4 py-2 text-right font-semibold bg-white/10">Mutasi Kredit</th>
+                                <th className="px-4 py-2 text-right font-semibold">Saldo Akhir</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-dark-border">
+                            {data.map(acc => (
+                                <tr
+                                    key={acc.id}
+                                    onClick={() => handleAccountClick(acc.id)}
+                                    className="hover:bg-dark-surface smooth-transition cursor-pointer group"
+                                >
+                                    <td className="px-4 py-2 font-mono text-accent-orange group-hover:underline">{acc.code}</td>
+                                    <td className="px-4 py-2 text-silver-light font-medium">{acc.name}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-silver-dark">{formatCurrency(acc.opening)}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-green-400 bg-green-400/5">
+                                        {acc.debitPeriod !== 0 ? formatCurrency(acc.debitPeriod) : '-'}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono text-cyan-400 bg-cyan-400/5">
+                                        {acc.creditPeriod !== 0 ? formatCurrency(acc.creditPeriod) : '-'}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono font-bold text-silver-light">
+                                        {formatCurrency(acc.closing)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot className="bg-dark-surface/50 font-bold">
+                            <tr>
+                                <td colSpan="2" className="px-4 py-2 text-right text-xs uppercase tracking-wider text-silver-dark">Subtotal {title}</td>
+                                <td className="px-4 py-2 text-right font-mono text-silver-dark text-xs">{formatCurrency(groupTotal.opening)}</td>
+                                <td className="px-4 py-2 text-right font-mono text-green-400 text-xs">{formatCurrency(groupTotal.debit)}</td>
+                                <td className="px-4 py-2 text-right font-mono text-cyan-400 text-xs">{formatCurrency(groupTotal.credit)}</td>
+                                <td className="px-4 py-2 text-right font-mono text-silver-light text-xs">{formatCurrency(groupTotal.closing)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
+    const formatExportCurrency = (val) => {
+        if (!val && val !== 0) return '-';
+        return val.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    };
+
+    const getExportData = () => {
+        const rows = balances.map(acc => ({
+            'Kode Akun': acc.code,
+            'Nama Akun': acc.name,
+            'Saldo Awal': formatExportCurrency(acc.opening),
+            'Mutasi Debit': formatExportCurrency(acc.debitPeriod),
+            'Mutasi Kredit': formatExportCurrency(acc.creditPeriod),
+            'Saldo Akhir': formatExportCurrency(acc.closing)
+        }));
+
+        const totalRow = {
+            'Kode Akun': 'TOTAL',
+            'Nama Akun': '',
+            'Saldo Awal': formatExportCurrency(totals.opening),
+            'Mutasi Debit': formatExportCurrency(totals.debit),
+            'Mutasi Kredit': formatExportCurrency(totals.credit),
+            'Saldo Akhir': formatExportCurrency(totals.closing)
+        };
+
+        return [...rows, totalRow];
+    };
+
+    const exportToExcel = () => {
+        const data = getExportData();
+        const ws = XLSX.utils.json_to_sheet(data);
+
+        // Set column widths
+        ws['!cols'] = [
+            { wch: 15 }, // Kode Akun
+            { wch: 40 }, // Nama Akun
+            { wch: 18 }, // Saldo Awal
+            { wch: 18 }, // Mutasi Debit
+            { wch: 18 }, // Mutasi Kredit
+            { wch: 18 }  // Saldo Akhir
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "TrialBalance");
+        XLSX.writeFile(wb, `NeracaSaldo_${dateRange.start}_${dateRange.end}.xlsx`);
+    };
+
+    const exportToCSV = () => {
+        const data = getExportData();
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "TrialBalance");
+        XLSX.writeFile(wb, `NeracaSaldo_${dateRange.start}_${dateRange.end}.csv`);
+    };
+
+    const isBalanced = Math.abs(totals.closing) < 1; // Tolerance for float
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold gradient-text flex items-center gap-2">
+                        <Scale className="w-8 h-8" />
+                        Neraca Saldo
+                    </h1>
+                    <p className="text-silver-dark mt-1">Trial Balance - Ringkasan saldo semua akun</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Button variant="secondary" icon={RefreshCw} onClick={fetchTrialBalance}>
+                        Refresh
+                    </Button>
+                    <button
+                        onClick={exportToExcel}
+                        className="flex items-center gap-2 px-3 py-2 bg-dark-surface text-green-400 hover:bg-dark-card smooth-transition rounded-lg border border-dark-border text-xs"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" /> Excel
+                    </button>
+                    <button
+                        onClick={exportToCSV}
+                        className="flex items-center gap-2 px-3 py-2 bg-dark-surface text-blue-400 hover:bg-dark-card smooth-transition rounded-lg border border-dark-border text-xs"
+                    >
+                        <FileText className="w-4 h-4" /> CSV
+                    </button>
+                </div>
+            </div>
+
+            {/* Controls & Summary */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="glass-card p-4 rounded-lg flex items-center gap-4 flex-1">
+                    <div>
+                        <label className="block text-xs text-silver-dark uppercase mb-1">Periode Awal</label>
+                        <input
+                            type="date"
+                            value={dateRange.start}
+                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                            className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-silver-light text-sm"
+                        />
+                    </div>
+                    <div className="h-px w-4 bg-silver-dark"></div>
+                    <div>
+                        <label className="block text-xs text-silver-dark uppercase mb-1">Periode Akhir</label>
+                        <input
+                            type="date"
+                            value={dateRange.end}
+                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                            className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-silver-light text-sm"
+                        />
+                    </div>
+                </div>
+
+                <div className={`glass-card p-4 rounded-lg flex items-center justify-between gap-6 border-l-4 ${isBalanced ? 'border-green-500' : 'border-red-500'} min-w-[300px]`}>
+                    <div>
+                        <p className="text-xs text-silver-dark uppercase tracking-wider">Status Balance</p>
+                        <div className="flex items-center gap-2 mt-1">
+                            {isBalanced ? (
+                                <>
+                                    <CheckCircle className="w-5 h-5 text-green-400" />
+                                    <span className="text-lg font-bold text-green-400">SEIMBANG</span>
+                                </>
+                            ) : (
+                                <>
+                                    <AlertCircle className="w-5 h-5 text-red-500" />
+                                    <span className="text-lg font-bold text-red-500">TIDAK BALANCE</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-silver-dark">Selisih</p>
+                        <p className={`font-mono font-bold ${isBalanced ? 'text-silver-light' : 'text-red-400'}`}>
+                            {formatCurrency(totals.closing)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Grand Total Row Fixed Top or Bottom */}
+            <div className={`glass-card p-3 rounded-lg flex gap-4 text-sm font-bold border ${isBalanced ? 'border-dark-border' : 'border-red-500/50'} bg-dark-surface/50`}>
+                <div className="flex-1 text-right text-silver-dark">GRAND TOTAL</div>
+                <div className="w-32 text-right text-green-400">{formatCurrency(totals.debit)}</div>
+                <div className="w-32 text-right text-cyan-400">{formatCurrency(totals.credit)}</div>
+            </div>
+
+            {loading ? (
+                <div className="p-12 text-center text-silver-dark">Loading financial data...</div>
+            ) : (
+                <div className="space-y-2">
+                    <AccountGroupTable title="HARTA (ASSETS)" data={groupedBalances.ASSET} colorClass="text-green-400" />
+                    <AccountGroupTable title="KEWAJIBAN (LIABILITIES)" data={groupedBalances.LIABILITY} colorClass="text-red-400" />
+                    <AccountGroupTable title="MODAL (EQUITY)" data={groupedBalances.EQUITY} colorClass="text-blue-400" />
+                    <AccountGroupTable title="PENDAPATAN (REVENUE)" data={groupedBalances.REVENUE} colorClass="text-cyan-400" />
+                    <AccountGroupTable title="BEBAN (EXPENSES)" data={groupedBalances.EXPENSE} colorClass="text-orange-400" />
+                    <AccountGroupTable title="LAIN-LAIN (OTHERS)" data={groupedBalances.OTHER} colorClass="text-purple-400" />
+                </div>
+            )}
+            <div className="text-center text-xs text-silver-dark mt-6 italic">
+                * Saldo minus (-) atau dalam kurung menunjukkan saldo normal Kredit (Utang/Modal/Pendapatan).
+                Sedangkan positif menunjukkan saldo normal Debit (Aset/Beban).
+            </div>
+        </div>
+    );
+};
+
+export default TrialBalance;

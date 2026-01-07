@@ -12,15 +12,13 @@ import {
 } from 'lucide-react';
 
 const BigDashboard = () => {
-    const { events, finance } = useData();
+    const { events } = useData();
     const navigate = useNavigate();
 
     const totalEvents = events.length;
     const upcomingEvents = events.filter((e) => e.status === 'planning' || e.status === 'confirmed').length;
     const ongoingEvents = events.filter((e) => e.status === 'ongoing').length;
     const completedEvents = events.filter((e) => e.status === 'completed').length;
-
-    const totalBudget = events.reduce((sum, e) => sum + parseFloat(e.budget || 0), 0);
 
     const recentEvents = events.slice(-5).reverse();
 
@@ -62,16 +60,16 @@ const BigDashboard = () => {
                     iconColor="text-blue-400"
                 />
                 <StatCard
+                    icon={TrendingUp}
+                    label="Ongoing"
+                    value={ongoingEvents}
+                    iconColor="text-purple-400"
+                />
+                <StatCard
                     icon={CheckCircle}
                     label="Completed"
                     value={completedEvents}
                     iconColor="text-emerald-400"
-                />
-                <StatCard
-                    icon={TrendingUp}
-                    label="Total Budget"
-                    value={`Rp ${totalBudget.toLocaleString('id-ID')}`}
-                    iconColor="text-purple-400"
                 />
             </div>
 
@@ -94,17 +92,14 @@ const BigDashboard = () => {
                                 className="flex items-center justify-between p-4 bg-dark-surface rounded-lg hover:bg-dark-card smooth-transition"
                             >
                                 <div className="flex-1">
-                                    <h3 className="font-medium text-silver-light">{event.name}</h3>
+                                    <h3 className="font-medium text-silver-light">{event.event_name}</h3>
                                     <p className="text-sm text-silver-dark">
-                                        {new Date(event.date).toLocaleDateString('id-ID')} • {event.location}
+                                        {event.event_date ? new Date(event.event_date).toLocaleDateString('id-ID') : '-'} • {event.venue || '-'}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[event.status]}`}>
                                         {event.status}
-                                    </span>
-                                    <span className="text-silver-light font-semibold">
-                                        Rp {parseFloat(event.budget || 0).toLocaleString('id-ID')}
                                     </span>
                                 </div>
                             </div>
@@ -114,7 +109,7 @@ const BigDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Button
                     onClick={() => navigate('/big/events')}
                     variant="secondary"
@@ -123,18 +118,25 @@ const BigDashboard = () => {
                     Manage Events
                 </Button>
                 <Button
+                    onClick={() => navigate('/big/quotations')}
+                    variant="secondary"
+                    className="w-full py-4"
+                >
+                    Quotations
+                </Button>
+                <Button
+                    onClick={() => navigate('/big/invoices')}
+                    variant="secondary"
+                    className="w-full py-4"
+                >
+                    Invoices
+                </Button>
+                <Button
                     onClick={() => navigate('/customers')}
                     variant="secondary"
                     className="w-full py-4"
                 >
-                    Manage Customers
-                </Button>
-                <Button
-                    onClick={() => navigate('/finance')}
-                    variant="secondary"
-                    className="w-full py-4"
-                >
-                    View Finance
+                    Customers
                 </Button>
             </div>
         </div>

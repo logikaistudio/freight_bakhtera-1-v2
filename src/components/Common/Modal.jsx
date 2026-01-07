@@ -3,7 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Button from './Button';
 
-const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-2xl' }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'medium', maxWidth }) => {
+    // Map size to Tailwind classes
+    const sizeClasses = {
+        small: 'max-w-md',
+        medium: 'max-w-2xl',
+        large: 'max-w-5xl'
+    };
+
+    const modalWidth = maxWidth || sizeClasses[size] || sizeClasses.medium;
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -34,7 +42,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-2xl' }) => 
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className={`glass-card w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-xl`}
+                            className={`glass-card w-full ${modalWidth} max-h-[90vh] overflow-y-auto rounded-xl`}
                         >
                             {/* Header */}
                             <div className="flex items-center justify-between p-6 border-b border-dark-border">
