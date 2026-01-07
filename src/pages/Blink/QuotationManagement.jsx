@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { supabase } from '../../lib/supabase';
+import { generateQuotationNumber } from '../../utils/documentNumbers';
 import Button from '../../components/Common/Button';
 import Modal from '../../components/Common/Modal';
 import ServiceItemManager from '../../components/Common/ServiceItemManager';
@@ -15,7 +16,7 @@ import {
 
 const QuotationManagement = () => {
     const navigate = useNavigate();
-    const { customers } = useData();
+    const { customers, companySettings } = useData();
     const [showModal, setShowModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [viewingQuotation, setViewingQuotation] = useState(null);
@@ -24,6 +25,7 @@ const QuotationManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [quotations, setQuotations] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showPrintPreview, setShowPrintPreview] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -140,8 +142,8 @@ const QuotationManagement = () => {
     const handleSubmit = async (e, status = 'draft') => {
         e.preventDefault();
 
-        // Generate Job Number - ini akan jadi primary reference untuk semua flow
-        const jobNumber = `JOB - ${new Date().getFullYear()} -${String(quotations.length + 1).padStart(4, '0')} `;
+        // Generate Job Number using centralized generator - Format: BLKYYMM-XXXX
+        const jobNumber = await generateQuotationNumber();
 
         // Calculate validity date
         const validUntil = new Date();
@@ -197,26 +199,7 @@ const QuotationManagement = () => {
     };
 
     // Finance approval handlers
-    const handleManagerApprove = async (quotationId) => {
-        try {
-            const { error } = await supabase
-                .from('blink_quotations')
-                .update({ status: 'sent' })
-                .eq('id', quotationId);
 
-            if (error) throw error;
-
-            await fetchQuotations();
-
-            // Get quotation details for message
-            const quotation = quotations.find(q => q.id === quotationId);
-            alert(`✅ Quotation Approved!\n\nJob Number: ${quotation?.jobNumber || 'N/A'}\n\nIni akan menjadi reference untuk:\n• Sales Order (SO)\n• Shipment\n• BL/AWB\n\nStatus: Sent to Customer`);
-            setShowViewModal(false);
-        } catch (error) {
-            console.error('Error approving quotation:', error);
-            alert('Failed to approve quotation: ' + error.message);
-        }
-    };
 
     const handleManagerReject = async (quotationId, reason) => {
         const rejectionReason = prompt('Alasan reject (optional):');
@@ -524,10 +507,150 @@ const QuotationManagement = () => {
         }
     };
 
+    // Print quotation handler
+    const handlePrintQuotation = (quotation) => {
+        try {
+            const printWindow = window.open('', '_blank');
+
+            if (!printWindow) {
+                alert('Pop-up blocked! Please allow pop-ups for this site.');
+                return;
+            }
+
+            const formatCurrency = (value, currency = 'IDR') => {
+                return currency === 'USD'
+                    ? `$${(value || 0).toLocaleString('id-ID')}`
+                    : `Rp ${(value || 0).toLocaleString('id-ID')}`;
+            };
+
+            const items = quotation.serviceItems || quotation.service_items || [];
+            const itemsRows = items.map((item, index) => `
+                <tr>
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td>${item.name || item.description}</td>
+                    <td style="text-align: center;">${item.quantity || 1}</td>
+                    <td style="text-align: center;">${item.unit || 'Job'}</td>
+                    <td style="text-align: right;">${formatCurrency(item.unitPrice || item.price, quotation.currency)}</td>
+                    <td style="text-align: right;">${formatCurrency(item.total || ((item.quantity || 1) * (item.unitPrice || 0)), quotation.currency)}</td>
+                </tr>
+            `).join('');
+
+            const content = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Quotation - ${quotation.quotationNumber || quotation.quotation_number}</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { font-family: Arial, sans-serif; margin: 20px; color: #333; font-size: 12px; }
+                        .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+                        .title { font-size: 24px; font-weight: bold; color: #333; }
+                        .company-info { margin-bottom: 30px; }
+                        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
+                        .section { background: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        th, td { padding: 10px; border-bottom: 1px solid #ddd; }
+                        th { text-align: left; background: #333; color: white; }
+                        .total-row { text-align: right; background: #333; color: white; padding: 10px; font-weight: bold; font-size: 14px; }
+                        .footer { margin-top: 50px; text-align: center; color: #666; font-size: 10px; border-top: 1px solid #ddd; padding-top: 20px; }
+                    </style>
+                </head>
+                <body>
+                     <div class="header">
+                        <div>
+                            <div class="title">QUOTATION</div>
+                            <div style="margin-top: 5px; font-size: 16px;">${quotation.quotationNumber || quotation.quotation_number}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div>Date: ${new Date(quotation.quotationDate || quotation.created_at).toLocaleDateString('id-ID')}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                         <div>
+                            <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #555;">FROM:</h3>
+                            <div style="font-weight: bold;">${companySettings?.company_name || 'PT Bakhtera Satu Indonesia'}</div>
+                            <div>${(companySettings?.company_address || 'Jakarta, Indonesia').replace(/\n/g, '<br/>')}</div>
+                            ${companySettings?.company_phone ? `<div>Tel: ${companySettings.company_phone}</div>` : ''}
+                            ${companySettings?.company_email ? `<div>Email: ${companySettings.company_email}</div>` : ''}
+                        </div>
+                        <div>
+                            <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #555;">TO:</h3>
+                            <div style="font-weight: bold;">${quotation.customerName || quotation.customer_name}</div>
+                            <div>${quotation.customerCompany || quotation.customer_company || ''}</div>
+                            <div>${quotation.customerAddress || quotation.customer_address || ''}</div>
+                             ${(quotation.salesPerson || quotation.sales_person) ? `<div>Attn: ${quotation.salesPerson || quotation.sales_person}</div>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div><strong>Service:</strong> ${(quotation.serviceType || quotation.service_type || '-').toUpperCase()}</div>
+                            <div><strong>Route:</strong> ${quotation.origin || '-'} → ${quotation.destination || '-'}</div>
+                            <div><strong>Commodity:</strong> ${quotation.commodity || '-'}</div>
+                            <div><strong>Validity:</strong> ${quotation.validityDays || 30} Days</div>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 50px; text-align: center;">No</th>
+                                <th>Description</th>
+                                <th style="width: 80px; text-align: center;">Qty</th>
+                                <th style="width: 80px; text-align: center;">Unit</th>
+                                <th style="width: 120px; text-align: right;">Unit Price</th>
+                                <th style="width: 120px; text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsRows}
+                        </tbody>
+                    </table>
+
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="background: #333; color: white; padding: 10px 20px; border-radius: 4px; display: inline-flex; gap: 20px;">
+                            <span>TOTAL ESTIMATED:</span>
+                            <span style="font-weight: bold;">${formatCurrency(quotation.totalAmount || quotation.total_amount, quotation.currency)}</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">
+                        <h4 style="font-size: 12px; font-weight: bold; margin-bottom: 10px;">TERMS & CONDITIONS:</h4>
+                        <ol style="padding-left: 20px; margin: 0; line-height: 1.5;">
+                            <li>All rates are subject to change without prior notice.</li>
+                            <li>Payment terms: ${quotation.paymentTerms || 'Net 30 Days'}.</li>
+                            <li>Subject to space and equipment availability.</li>
+                            <li>Standard Trading Conditions apply.</li>
+                        </ol>
+                    </div>
+
+                    <div class="footer">
+                        Thank you for your business inquiry!
+                    </div>
+                    
+                    <script>
+                        window.print();
+                    </script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(content);
+            printWindow.document.close();
+        } catch (error) {
+            console.error('Print error:', error);
+            alert('Failed to print');
+        }
+    };
+
     // Create SO from approved quotation
     const handleCreateSO = async (quotation) => { // Added async
         console.log('🔵 Create SO clicked for quotation:', quotation.id);
-        const soNumber = `SO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+        // Generate SO Number using centralized generator - Format: BLKYYMM-SO-XXXX
+        const { generateSONumber } = await import('../../utils/documentNumbers');
+        const soNumber = generateSONumber(quotation.jobNumber || quotation.quotationNumber);
         console.log('📝 Generated SO Number:', soNumber);
 
         // Update quotation status to converted via Supabase
@@ -675,17 +798,7 @@ const QuotationManagement = () => {
                         <Clock className="w-8 h-8 text-yellow-400" />
                     </div>
                 </div>
-                <div className="glass-card p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-silver-dark">Sent to Customer</p>
-                            <p className="text-2xl font-bold text-purple-400 mt-1">
-                                {quotations.filter(q => q.status === 'sent').length}
-                            </p>
-                        </div>
-                        <Send className="w-8 h-8 text-purple-400" />
-                    </div>
-                </div>
+
                 <div className="glass-card p-4 rounded-lg">
                     <div className="flex items-center justify-between">
                         <div>
@@ -834,66 +947,7 @@ const QuotationManagement = () => {
                 size="large"
             >
                 <form onSubmit={(e) => handleSubmit(e, 'draft')} className="space-y-6">
-                    {/* Quick Fill Sample Data Buttons */}
-                    <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                        <p className="text-sm font-semibold text-blue-400 mb-3">📋 Quick Fill Sample Data:</p>
-                        <div className="flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setFormData({
-                                        ...formData,
-                                        customerName: 'PT Sejahtera Logistik',
-                                        customerCompany: 'PT Sejahtera Logistik',
-                                        customerAddress: 'Jl. Sudirman No. 123, Jakarta Pusat',
-                                        salesPerson: 'John Doe',
-                                        quotationType: 'RG',
-                                        origin: 'Jakarta',
-                                        destination: 'Singapore',
-                                        serviceType: 'sea',
-                                        cargoType: 'General Cargo',
-                                        weight: '15000',
-                                        volume: '25.5',
-                                        commodity: 'Electronics Components',
-                                        currency: 'IDR',
-                                        totalAmount: '85000000',
-                                        validityDays: 30,
-                                        notes: 'Urgent shipment - Priority handling required'
-                                    });
-                                }}
-                                className="flex-1 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg font-semibold text-sm smooth-transition"
-                            >
-                                ✓ Sample 1: Sea Freight (IDR 85M)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setFormData({
-                                        ...formData,
-                                        customerName: 'CV Maju Bersama',
-                                        customerCompany: 'CV Maju Bersama',
-                                        customerAddress: 'Jl. Raya Darmo No. 456, Surabaya',
-                                        salesPerson: 'Jane Smith',
-                                        quotationType: 'RG',
-                                        origin: 'Surabaya',
-                                        destination: 'Hong Kong',
-                                        serviceType: 'air',
-                                        cargoType: 'Documents',
-                                        weight: '250',
-                                        volume: '0.8',
-                                        commodity: 'Legal Documents & Certificates',
-                                        currency: 'IDR',
-                                        totalAmount: '12500000',
-                                        validityDays: 30,
-                                        notes: 'Urgent express delivery required'
-                                    });
-                                }}
-                                className="flex-1 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg font-semibold text-sm smooth-transition"
-                            >
-                                ✈ Sample 2: Air Freight (IDR 12.5M)
-                            </button>
-                        </div>
-                    </div>
+
 
                     {/* Customer Selection */}
                     <div>
@@ -1193,6 +1247,24 @@ const QuotationManagement = () => {
                                 </p>
                             </div>
                             <div className="flex gap-2 items-center">
+                                {/* Print Actions */}
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    icon={Eye}
+                                    onClick={() => setShowPrintPreview(true)}
+                                >
+                                    Preview
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    icon={FileText}
+                                    onClick={() => handlePrintQuotation(viewingQuotation)}
+                                >
+                                    Print
+                                </Button>
+
                                 {!isEditingQuotation && (
                                     <>
                                         <Button size="sm" variant="secondary" icon={Edit} onClick={handleEditQuotation}>
@@ -1339,12 +1411,27 @@ const QuotationManagement = () => {
                         {/* Department-Specific Actions */}
                         <div className="flex justify-between gap-3 pt-4 border-t border-dark-border">
                             <div className="flex gap-2">
+                                {/* Draft Actions */}
+                                {viewingQuotation.status === 'draft' && (
+                                    <Button onClick={() => handleUpdateStatus(viewingQuotation.id, 'manager_approval')}>
+                                        Submit for Manager Approval
+                                    </Button>
+                                )}
+
                                 {/* Manager Approval */}
                                 {viewingQuotation.status === 'manager_approval' && (
                                     <>
-                                        <Button onClick={() => handleManagerApprove(viewingQuotation.id)} className="bg-green-500/20 hover:bg-green-500/30 text-green-400">
-                                            ✓ Approve & Send to Customer
+                                        <Button
+                                            onClick={() => {
+                                                if (confirm('Approve dan langsung buat Sales Order (SO)?\n\nIni akan:\n1. Mengubah status menjadi Converted\n2. Membuat nomor SO otomatis\n3. Membuat Shipment baru di Operations')) {
+                                                    handleCreateSO(viewingQuotation);
+                                                }
+                                            }}
+                                            className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-bold border border-blue-500/40"
+                                        >
+                                            ⚡ Approve & Create SO
                                         </Button>
+
                                         <Button variant="secondary" onClick={() => handleManagerReject(viewingQuotation.id)} className="bg-red-500/20 hover:bg-red-500/30 text-red-400">
                                             ✗ Reject
                                         </Button>
@@ -1354,19 +1441,7 @@ const QuotationManagement = () => {
 
 
                                 {/* Customer Decision */}
-                                {viewingQuotation.status === 'sent' && (
-                                    <>
-                                        <Button onClick={() => handleUpdateStatus(viewingQuotation.id, 'approved')} className="bg-green-500/20 hover:bg-green-500/30 text-green-400">
-                                            ✓ Customer Approved
-                                        </Button>
-                                        <Button variant="secondary" onClick={() => handleUpdateStatus(viewingQuotation.id, 'rejected')} className="bg-red-500/20 hover:bg-red-500/30 text-red-400">
-                                            ✗ Customer Rejected
-                                        </Button>
-                                        <Button variant="secondary" onClick={() => handleRequestRevision(viewingQuotation.id)} className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-400">
-                                            ✏️ Request Revision
-                                        </Button>
-                                    </>
-                                )}
+
 
                                 {/* Create Revision (for revision_requested status) */}
                                 {viewingQuotation.status === 'revision_requested' && (
@@ -1394,7 +1469,199 @@ const QuotationManagement = () => {
                     </div>
                 </Modal>
             )}
+            {showPrintPreview && viewingQuotation && (
+                <QuotationPrintPreviewModal
+                    quotation={viewingQuotation}
+                    onClose={() => setShowPrintPreview(false)}
+                    onPrint={handlePrintQuotation}
+                    companySettings={companySettings}
+                />
+            )}
         </div>
+    );
+};
+
+const QuotationPrintPreviewModal = ({ quotation, onClose, onPrint, companySettings }) => {
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const formatCurrency = (value, currency = 'IDR') => {
+        return currency === 'USD'
+            ? `$${(value || 0).toLocaleString('id-ID')}`
+            : `Rp ${(value || 0).toLocaleString('id-ID')}`;
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} maxWidth="max-w-4xl">
+            <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold gradient-text">Quotation Preview</h2>
+                    <div className="flex gap-2 print:hidden">
+                        <button
+                            onClick={() => onPrint(quotation)}
+                            className="flex items-center gap-2 px-4 py-2 bg-accent-orange hover:bg-accent-orange/80 text-white rounded-lg smooth-transition font-semibold"
+                        >
+                            <Download className="w-4 h-4" />
+                            Print / Save as PDF
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 border border-dark-border text-silver-light rounded-lg hover:bg-dark-surface smooth-transition"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+
+                {/* Print-friendly quotation content */}
+                <div className="print-content bg-white text-black p-8 rounded-lg">
+                    {/* Header */}
+                    <div className="border-b-2 border-gray-800 pb-4 mb-6 flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-800">QUOTATION</h1>
+                            <p className="text-xl font-semibold text-gray-600 mt-1">{quotation.quotationNumber || quotation.quotation_number}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-gray-600">Date</p>
+                            <p className="font-bold text-gray-800">{new Date(quotation.quotationDate || quotation.created_at).toLocaleDateString('id-ID')}</p>
+                        </div>
+                    </div>
+
+                    {/* Company & Customer Info */}
+                    <div className="grid grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-700 mb-2">FROM:</h3>
+                            <div className="text-sm text-gray-800">
+                                <p className="font-bold text-base text-[#0070BB]">{companySettings?.company_name || 'PT Bakhtera Satu Indonesia'}</p>
+                                <p className="mt-2 whitespace-pre-wrap">{companySettings?.company_address || 'Jakarta, Indonesia'}</p>
+                                {companySettings?.company_phone && <p className="mt-2">Phone: {companySettings.company_phone}</p>}
+                                {companySettings?.company_email && <p>Email: {companySettings.company_email}</p>}
+                                {companySettings?.company_npwp && <p className="mt-1 font-semibold">NPWP: {companySettings.company_npwp}</p>}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-700 mb-2">TO:</h3>
+                            <div className="text-sm text-gray-800">
+                                <p className="font-bold text-base">{quotation.customerName || quotation.customer_name}</p>
+                                {(quotation.customerCompany || quotation.customer_company) && <p className="text-gray-600">{quotation.customerCompany || quotation.customer_company}</p>}
+                                {(quotation.customerAddress || quotation.customer_address) && <p className="mt-2">{quotation.customerAddress || quotation.customer_address}</p>}
+                                <p className="mt-4"><span className="font-semibold">Attn:</span> {quotation.salesPerson || quotation.sales_person || '-'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Details Grid */}
+                    <div className="grid grid-cols-2 gap-4 mb-8 bg-gray-50 p-4 rounded">
+                        <div>
+                            <p className="text-xs text-gray-600">Service Type:</p>
+                            <p className="font-semibold text-gray-800">{(quotation.serviceType || quotation.service_type || '-').toUpperCase()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-600">Validity:</p>
+                            <p className="font-semibold text-gray-800">{quotation.validityDays || 30} Days</p>
+                        </div>
+                        {(quotation.origin || quotation.destination) && (
+                            <div className="col-span-2">
+                                <p className="text-xs text-gray-600">Route:</p>
+                                <p className="font-semibold text-gray-800">{quotation.origin || '-'} → {quotation.destination || '-'}</p>
+                            </div>
+                        )}
+                        <div className="col-span-2 grid grid-cols-3 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-600">Commodity:</p>
+                                <p className="font-semibold text-gray-800">{quotation.commodity || '-'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-600">Weight:</p>
+                                <p className="font-semibold text-gray-800">{quotation.weight || '-'} kg</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-600">Volume:</p>
+                                <p className="font-semibold text-gray-800">{quotation.volume || '-'} m³</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <table className="w-full mb-8">
+                        <thead>
+                            <tr className="bg-gray-800 text-white">
+                                <th className="p-3 text-left text-xs font-bold">NO</th>
+                                <th className="p-3 text-left text-xs font-bold">DESCRIPTION</th>
+                                <th className="p-3 text-center text-xs font-bold">QTY</th>
+                                <th className="p-3 text-center text-xs font-bold">UNIT</th>
+                                <th className="p-3 text-right text-xs font-bold">UNIT PRICE</th>
+                                <th className="p-3 text-right text-xs font-bold">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(quotation.serviceItems || quotation.service_items || []).map((item, index) => (
+                                <tr key={index} className="border-b border-gray-200">
+                                    <td className="p-3 text-sm text-gray-700 text-center">{index + 1}</td>
+                                    <td className="p-3 text-sm text-gray-800">{item.name || item.description}</td>
+                                    <td className="p-3 text-sm text-gray-700 text-center">{item.quantity || 1}</td>
+                                    <td className="p-3 text-sm text-gray-700 text-center">{item.unit || 'Job'}</td>
+                                    <td className="p-3 text-sm text-gray-700 text-right">{formatCurrency(item.unitPrice || item.price, quotation.currency)}</td>
+                                    <td className="p-3 text-sm text-gray-800 text-right font-semibold">{formatCurrency(item.total || ((item.quantity || 1) * (item.unitPrice || 0)), quotation.currency)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* Totals */}
+                    <div className="flex justify-end mb-8">
+                        <div className="w-80">
+                            <div className="flex justify-between py-3 bg-gray-800 text-white px-4 rounded">
+                                <span className="font-bold">TOTAL ESTIMATED:</span>
+                                <span className="font-bold text-lg">{formatCurrency(quotation.totalAmount || quotation.total_amount, quotation.currency)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Terms */}
+                    <div className="mt-12 pt-6 border-t border-gray-300">
+                        <h4 className="text-xs font-bold text-gray-700 mb-2">TERMS & CONDITIONS:</h4>
+                        <ol className="list-decimal pl-4 text-xs text-gray-600 space-y-1">
+                            <li>All rates are subject to change without prior notice.</li>
+                            <li>Payment terms: {quotation.paymentTerms || 'Net 30 Days'}.</li>
+                            <li>Subject to space and equipment availability.</li>
+                            <li>Standard Trading Conditions apply.</li>
+                        </ol>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-12 text-center">
+                        <p className="text-xs text-gray-500">Thank you for your business inquiry!</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Print-specific styles */}
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .print-content, .print-content * {
+                        visibility: visible;
+                    }
+                    .print-content {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        background: white !important;
+                        box-shadow: none !important;
+                        color: black !important;
+                    }
+                    .print:hidden {
+                        display: none !important;
+                    }
+                }
+            `}</style>
+        </Modal>
     );
 };
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useData } from '../../context/DataContext';
+import { generatePONumber } from '../../utils/documentNumbers';
 import Button from '../../components/Common/Button';
 import Modal from '../../components/Common/Modal';
 import {
@@ -8,6 +10,7 @@ import {
 } from 'lucide-react';
 
 const PurchaseOrder = () => {
+    const { companySettings } = useData();
     const [pos, setPOs] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [shipments, setShipments] = useState([]);
@@ -61,10 +64,7 @@ const PurchaseOrder = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('blink_purchase_orders')
-                .select(`
-                    *,
-                    vendors:vendor_id (name)
-                `)
+                .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -172,7 +172,9 @@ const PurchaseOrder = () => {
 
     const handleCreatePO = async (e) => {
         e.preventDefault();
-        console.log('Starting PO Creation... (Fix Applied)');
+        e.preventDefault();
+        console.log('Starting PO Creation... (Form Data):', formData);
+        console.log('Vendor ID present?:', formData.vendor_id);
 
         if (!formData.vendor_id) {
             alert('Please select a vendor');
@@ -196,7 +198,7 @@ const PurchaseOrder = () => {
                     vendor_email: vendor.email || '',
                     vendor_phone: vendor.phone || '',
                     vendor_address: vendor.address || '',
-                    po_number: `PO-${Date.now()}`, // Simple PO Number Generation
+                    po_number: await generatePONumber(), // Using centralized PO Number Generation
                     po_date: formData.po_date || new Date(),
                     delivery_date: formData.delivery_date || null,
                     payment_terms: formData.payment_terms,
@@ -618,6 +620,16 @@ const PurchaseOrder = () => {
                     </style>
                 </head>
                 <body>
+                    <!-- Company Letterhead -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="text-align: center;">
+                            <h1 style="margin: 0 0 5px 0; color: #0070BB; font-size: 18px;">${companySettings?.company_name || 'PT Bakhtera Satu Indonesia'}</h1>
+                            <p style="margin: 0 0 3px 0; font-size: 10px; color: #444;">${(companySettings?.company_address || 'Jakarta, Indonesia').replace(/\n/g, ', ')}</p>
+                            ${companySettings?.company_phone || companySettings?.company_email ? `<p style="margin: 0; font-size: 9px; color: #666;">${companySettings?.company_phone ? 'Tel: ' + companySettings.company_phone : ''}${companySettings?.company_phone && companySettings?.company_email ? ' | ' : ''}${companySettings?.company_email ? 'Email: ' + companySettings.company_email : ''}</p>` : ''}
+                        </div>
+                        <div style="margin-top: 10px; border-top: 2px solid #0070BB;"></div>
+                    </div>
+                    
                     <div class="header">
                         <h1>PURCHASE ORDER</h1>
                         <p><strong>${po.po_number}</strong></p>
@@ -633,12 +645,12 @@ const PurchaseOrder = () => {
                         <tr>
                             <td class="label">PO Date</td>
                             <td class="colon">:</td>
-                            <td class="value">${po.po_date || '-'}</td>
+                            <td class="value">${po.po_date ? new Date(po.po_date).toLocaleDateString('id-ID') : '-'}</td>
                         </tr>
                         <tr>
                             <td class="label">Delivery Date</td>
                             <td class="colon">:</td>
-                            <td class="value">${po.delivery_date || '-'}</td>
+                            <td class="value">${po.delivery_date ? new Date(po.delivery_date).toLocaleDateString('id-ID') : '-'}</td>
                         </tr>
                         <tr>
                             <td class="label">Payment Terms</td>
@@ -759,6 +771,8 @@ const PurchaseOrder = () => {
 
     const handleUpdatePO = async (e) => {
         e.preventDefault();
+        console.log('Starting PO Update... (Form Data):', formData);
+        console.log('Delivery Date Value:', formData.delivery_date);
 
         if (!formData.vendor_id) {
             alert('Please select a vendor');
@@ -974,10 +988,14 @@ const PurchaseOrder = () => {
                                                 <span className="text-silver-light">{po.vendor_name}</span>
                                             </td>
                                             <td className="px-3 py-2 whitespace-nowrap">
-                                                <span className="text-silver-dark">{po.po_date}</span>
+                                                <span className="text-silver-dark">
+                                                    {po.po_date ? new Date(po.po_date).toLocaleDateString('id-ID') : '-'}
+                                                </span>
                                             </td>
                                             <td className="px-3 py-2 whitespace-nowrap">
-                                                <span className="text-silver-dark">{po.delivery_date || '-'}</span>
+                                                <span className="text-silver-dark">
+                                                    {po.delivery_date ? new Date(po.delivery_date).toLocaleDateString('id-ID') : '-'}
+                                                </span>
                                             </td>
                                             <td className="px-3 py-2 text-right whitespace-nowrap">
                                                 <span className="font-semibold text-silver-light">{formatCurrency(po.total_amount, po.currency)}</span>
@@ -1386,7 +1404,11 @@ const POViewModal = ({ po, formatCurrency, onClose, onEdit, onSubmit, onApprove,
                         </div>
                         <div>
                             <p className="text-sm text-silver-dark">PO Date</p>
-                            <p className="text-silver-light">{po.po_date}</p>
+                            <p className="text-silver-light">{po.po_date ? new Date(po.po_date).toLocaleDateString('id-ID') : '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-silver-dark">Delivery Date</p>
+                            <p className="text-silver-light">{po.delivery_date ? new Date(po.delivery_date).toLocaleDateString('id-ID') : '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-silver-dark">Payment Terms</p>

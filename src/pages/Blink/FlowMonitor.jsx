@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { generateSONumber } from '../../utils/documentNumbers';
 import { Activity, Calendar, User, FileText, Package, Clock } from 'lucide-react';
 
 const FlowMonitor = () => {
@@ -39,9 +40,9 @@ const FlowMonitor = () => {
                 // Customer approved
                 customer_approved_at: q.status === 'approved' || q.status === 'converted' ? q.updated_at : null,
                 customer_approved_by: q.customer_name,
-                // SO created (when converted)
+                // SO created (when converted) - Format: BLKYYMM-SO-XXXX
                 so_created_at: q.status === 'converted' ? q.updated_at : null,
-                so_number: q.status === 'converted' ? `SO-${q.job_number}` : null,
+                so_number: q.status === 'converted' ? generateSONumber(q.job_number || q.quotation_number) : null,
                 // Current status
                 current_status: q.status,
                 remark: q.notes || '-'

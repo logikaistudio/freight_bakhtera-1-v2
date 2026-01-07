@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import {
     FileText, Plus, Search, Calendar, DollarSign,
     ChevronRight, RefreshCw, Eye, Edit, Trash2, Check, X, Send
 } from 'lucide-react';
-import Button from '../../components/Common/Button';
-import Modal from '../../components/Common/Modal';
+import Button from '../../../components/Common/Button';
+import Modal from '../../../components/Common/Modal';
 
 const BigQuotations = () => {
     const navigate = useNavigate();

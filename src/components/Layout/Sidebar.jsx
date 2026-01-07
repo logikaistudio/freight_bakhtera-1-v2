@@ -90,18 +90,27 @@ const Sidebar = () => {
     // BIG submenu - Event Organizer
     const bigSubMenuItems = [
         { path: '/big', label: 'Dashboard', icon: LayoutDashboard },
+
+        // Sales Category
         {
-            type: 'category', label: '🎪 Event', items: [
-                { path: '/big/events', label: 'Manajemen Event' },
-                { path: '/big/quotations', label: 'Quotations' },
-                { path: '/big/costs', label: 'Costs (COGS)' },
+            type: 'category', label: '📋 Sales', items: [
+                { path: '/big/sales/quotations', label: 'Quotations' },
             ]
         },
+
+        // Operations Category
+        {
+            type: 'category', label: '⚙️ Operations', items: [
+                { path: '/big/operations/events', label: 'Event Management' },
+                { path: '/big/operations/costs', label: 'Event Costs' },
+            ]
+        },
+
+        // Finance Category
         {
             type: 'category', label: '💰 Finance', items: [
-                { type: 'divider', label: '📋 Transaksi' },
-                { path: '/big/invoices', label: 'Invoices' },
-                { path: '/big/ar', label: 'Piutang (AR)' },
+                { path: '/big/finance/invoices', label: 'Invoices' },
+                { path: '/big/finance/ar', label: 'Piutang (AR)' },
             ]
         },
     ];

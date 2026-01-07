@@ -164,17 +164,17 @@ const APPaymentRecordModal = ({ ap, formatCurrency, onClose, onSuccess }) => {
 
                 console.log('Updating PO:', poIdentifier, 'with:', updateData);
 
-                const { data: poData, error: poError } = await supabase
+                // Use update without .select() to avoid PGRST204 error when no rows returned
+                const { error: poError } = await supabase
                     .from('blink_purchase_orders')
                     .update(updateData)
-                    .eq('id', poIdentifier)
-                    .select();
+                    .eq('id', poIdentifier);
 
                 if (poError) {
                     console.error('PO Sync Error:', poError);
                     // Don't throw - AP update was successful, PO sync is secondary
                 } else {
-                    console.log('PO Sync Success:', poData);
+                    console.log('PO Sync Success for ID:', poIdentifier);
                 }
             } else {
                 console.warn('No po_id or po_number found in AP record, cannot sync PO');

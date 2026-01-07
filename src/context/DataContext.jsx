@@ -1762,65 +1762,104 @@ export const DataProvider = ({ children }) => {
     // Company Settings operations
     const fetchCompanySettings = async () => {
         try {
-            // Fetch company settings
-            const { data: settingsData, error: settingsError } = await supabase
-                .from('company_settings')
-                .select('*')
-                .single();
+            console.log('🔄 Fetching company settings...');
+            // Fetch company settings - use limit(1) instead of single() to avoid error
+            try {
+                const { data: settingsData, error: settingsError } = await supabase
+                    .from('company_settings')
+                    .select('*')
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
 
-            if (settingsError && settingsError.code !== 'PGRST116') {
-                console.error('Error fetching company settings:', settingsError);
-            } else if (settingsData) {
-                setCompanySettings(settingsData);
+                console.log('📦 Company settings response:', { settingsData, settingsError });
+
+                if (settingsError) {
+                    console.warn('Warning: Could not fetch company settings:', settingsError.message);
+                } else if (settingsData && settingsData.length > 0) {
+                    console.log('✅ Company settings loaded:', settingsData[0]);
+                    setCompanySettings(settingsData[0]);
+                } else {
+                    console.log('ℹ️ No company settings found');
+                }
+            } catch (e) {
+                console.warn('company_settings table may not exist:', e.message);
             }
 
-            // Fetch bank accounts
-            const { data: bankData, error: bankError } = await supabase
-                .from('company_bank_accounts')
-                .select('*')
-                .order('display_order', { ascending: true });
+            // Fetch bank accounts - wrapped in try-catch to handle missing table
+            try {
+                const { data: bankData, error: bankError } = await supabase
+                    .from('company_bank_accounts')
+                    .select('*')
+                    .order('display_order', { ascending: true });
 
-            if (bankError) {
-                console.error('Error fetching bank accounts:', bankError);
-            } else if (bankData) {
-                setBankAccounts(bankData);
+                if (bankError) {
+                    console.warn('Warning: Could not fetch bank accounts:', bankError.message);
+                } else if (bankData) {
+                    setBankAccounts(bankData);
+                }
+            } catch (e) {
+                console.warn('company_bank_accounts table may not exist:', e.message);
             }
         } catch (error) {
-            console.error('Error in fetchCompanySettings:', error);
+            console.warn('Error in fetchCompanySettings (non-critical):', error);
         }
     };
 
     const updateCompanySettings = async (settings) => {
         try {
+            console.log('📝 updateCompanySettings called:', settings);
+            console.log('📝 Current companySettings:', companySettings);
+
             if (companySettings?.id) {
                 // Update existing
-                const { error } = await supabase
+                console.log('📝 Updating existing settings with ID:', companySettings.id);
+                const { data, error } = await supabase
                     .from('company_settings')
                     .update({
-                        company_name: settings.company_name,
-                        company_address: settings.company_address,
-                        company_phone: settings.company_phone,
-                        company_fax: settings.company_fax,
-                        company_email: settings.company_email,
-                        company_npwp: settings.company_npwp,
-                        logo_url: settings.logo_url,
+                        company_name: settings.company_name || null,
+                        company_address: settings.company_address || null,
+                        company_phone: settings.company_phone || null,
+                        company_fax: settings.company_fax || null,
+                        company_email: settings.company_email || null,
+                        company_npwp: settings.company_npwp || null,
+                        logo_url: settings.logo_url || null,
                         updated_at: new Date().toISOString()
                     })
-                    .eq('id', companySettings.id);
+                    .eq('id', companySettings.id)
+                    .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Update error:', error);
+                    throw error;
+                }
 
+                console.log('✅ Settings updated successfully:', data);
                 setCompanySettings({ ...companySettings, ...settings });
             } else {
                 // Insert new
+                console.log('📝 Inserting new settings...');
+                const newSettings = {
+                    company_name: settings.company_name || null,
+                    company_address: settings.company_address || null,
+                    company_phone: settings.company_phone || null,
+                    company_fax: settings.company_fax || null,
+                    company_email: settings.company_email || null,
+                    company_npwp: settings.company_npwp || null,
+                    logo_url: settings.logo_url || null
+                };
+
                 const { data, error } = await supabase
                     .from('company_settings')
-                    .insert([settings])
+                    .insert([newSettings])
                     .select()
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Insert error:', error);
+                    throw error;
+                }
 
+                console.log('✅ New settings inserted:', data);
                 setCompanySettings(data);
             }
         } catch (error) {

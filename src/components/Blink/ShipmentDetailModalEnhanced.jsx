@@ -327,14 +327,9 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                 return;
             }
 
-            // 2. Fetch PO count for number generation
-            const { count } = await supabase
-                .from('blink_purchase_orders')
-                .select('*', { count: 'exact', head: true });
-
-            const year = new Date().getFullYear();
-            const nextNum = (count || 0) + 1;
-            const poNumber = `PO-${year}-${String(nextNum).padStart(4, '0')}`;
+            // 2. Generate PO number using centralized generator
+            const { generatePONumber } = await import('../../utils/documentNumbers');
+            const poNumber = await generatePONumber();
 
             // 3. Create PO
             const totalAmount = poItems.reduce((sum, item) => sum + item.amount, 0);
@@ -358,13 +353,24 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                 notes: `Generated from Shipment Job: ${shipment.job_number}`
             };
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('blink_purchase_orders')
-                .insert([newPO]);
+                .insert([newPO])
+                .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase insert error:', error);
+                throw error;
+            }
 
+            console.log('✅ PO inserted successfully:', data);
             alert(`✅ Purchase Order ${poNumber} generated successfully!`);
+
+            // Close the shipment modal
+            onClose();
+
+            // Navigate to Purchase Order page
+            navigate('/blink/finance/purchase-orders');
 
         } catch (error) {
             console.error('Error generating PO:', error);
@@ -883,7 +889,7 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                     >
                                         Save Changes
                                     </Button>
-                                    {activeTab === 'cogs' && (
+                                    {activeTab === 'cogs' && calculateTotalCOGS() > 0 && (
                                         <Button
                                             size="sm"
                                             variant="outline"
@@ -1173,12 +1179,13 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                                 <div>
                                                     <label className="text-silver-dark text-xs">Shipper (Vendor)</label>
                                                     <select
-                                                        value={editedShipment.shipper_name || editedShipment.shipper || ''}
+                                                        value={editedShipment.shipper_name || editedShipment.shipperName || editedShipment.shipper || ''}
                                                         onChange={(e) => {
                                                             const selectedVendor = vendors.find(v => v.name === e.target.value);
                                                             setEditedShipment({
                                                                 ...editedShipment,
                                                                 shipper_name: e.target.value,
+                                                                shipperName: e.target.value,
                                                                 shipper: e.target.value,
                                                                 shipper_address: selectedVendor?.address || ''
                                                             });
@@ -1367,45 +1374,61 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                             <label className="text-silver-dark text-sm">
                                                 {shipment.serviceType === 'sea' ? 'Vessel Name' : shipment.serviceType === 'air' ? 'Flight Number' : 'Vehicle'}
                                             </label>
-                                            <input
-                                                type="text"
-                                                value={bookingData.vesselName}
-                                                onChange={(e) => setBookingData({ ...bookingData, vesselName: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                placeholder={shipment.serviceType === 'sea' ? 'MV Ocean Star' : 'SQ123'}
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={bookingData.vesselName}
+                                                    onChange={(e) => setBookingData({ ...bookingData, vesselName: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                    placeholder={shipment.serviceType === 'sea' ? 'MV Ocean Star' : 'SQ123'}
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{bookingData.vesselName || '-'}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-silver-dark text-sm">
                                                 {shipment.serviceType === 'sea' ? 'Voyage Number' : 'Reference'}
                                             </label>
-                                            <input
-                                                type="text"
-                                                value={bookingData.voyageNumber}
-                                                onChange={(e) => setBookingData({ ...bookingData, voyageNumber: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                placeholder="VOY123"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={bookingData.voyageNumber}
+                                                    onChange={(e) => setBookingData({ ...bookingData, voyageNumber: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                    placeholder="VOY123"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{bookingData.voyageNumber || '-'}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-silver-dark text-sm">Port/Airport of Loading</label>
-                                            <input
-                                                type="text"
-                                                value={bookingData.portOfLoading}
-                                                onChange={(e) => setBookingData({ ...bookingData, portOfLoading: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                placeholder="IDJKT"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={bookingData.portOfLoading}
+                                                    onChange={(e) => setBookingData({ ...bookingData, portOfLoading: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                    placeholder="IDJKT"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{bookingData.portOfLoading || '-'}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-silver-dark text-sm">Port/Airport of Discharge</label>
-                                            <input
-                                                type="text"
-                                                value={bookingData.portOfDischarge}
-                                                onChange={(e) => setBookingData({ ...bookingData, portOfDischarge: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                placeholder="SGSIN"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={bookingData.portOfDischarge}
+                                                    onChange={(e) => setBookingData({ ...bookingData, portOfDischarge: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                    placeholder="SGSIN"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{bookingData.portOfDischarge || '-'}</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1416,48 +1439,68 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-silver-dark text-sm">ETD (Estimated Departure)</label>
-                                            <input
-                                                type="date"
-                                                value={dates.etd}
-                                                onChange={(e) => setDates({ ...dates, etd: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="date"
+                                                    value={dates.etd}
+                                                    onChange={(e) => setDates({ ...dates, etd: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{dates.etd ? new Date(dates.etd).toLocaleDateString() : '-'}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-silver-dark text-sm">ETA (Estimated Arrival)</label>
-                                            <input
-                                                type="date"
-                                                value={dates.eta}
-                                                onChange={(e) => setDates({ ...dates, eta: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="date"
+                                                    value={dates.eta}
+                                                    onChange={(e) => setDates({ ...dates, eta: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{dates.eta ? new Date(dates.eta).toLocaleDateString() : '-'}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-silver-dark text-sm">Actual Departure</label>
-                                            <input
-                                                type="date"
-                                                value={dates.actualDeparture}
-                                                onChange={(e) => setDates({ ...dates, actualDeparture: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="date"
+                                                    value={dates.actualDeparture}
+                                                    onChange={(e) => setDates({ ...dates, actualDeparture: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{dates.actualDeparture ? new Date(dates.actualDeparture).toLocaleDateString() : '-'}</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-silver-dark text-sm">Actual Arrival</label>
-                                            <input
-                                                type="date"
-                                                value={dates.actualArrival}
-                                                onChange={(e) => setDates({ ...dates, actualArrival: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="date"
+                                                    value={dates.actualArrival}
+                                                    onChange={(e) => setDates({ ...dates, actualArrival: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{dates.actualArrival ? new Date(dates.actualArrival).toLocaleDateString() : '-'}</p>
+                                            )}
                                         </div>
                                         <div className="col-span-2">
                                             <label className="text-silver-dark text-sm">Delivery Date</label>
-                                            <input
-                                                type="date"
-                                                value={dates.deliveryDate}
-                                                onChange={(e) => setDates({ ...dates, deliveryDate: e.target.value })}
-                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="date"
+                                                    value={dates.deliveryDate}
+                                                    onChange={(e) => setDates({ ...dates, deliveryDate: e.target.value })}
+                                                    className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                />
+                                            ) : (
+                                                <p className="text-silver-light font-medium mt-1">{dates.deliveryDate ? new Date(dates.deliveryDate).toLocaleDateString() : '-'}</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1658,7 +1701,7 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                                             <label className="text-silver-dark text-sm">Exchange Rate (USD to IDR)</label>
                                                             <input
                                                                 type="number"
-                                                                value={exchangeRate}
+                                                                value={exchangeRate || ''}
                                                                 onChange={(e) => setExchangeRate(e.target.value)}
                                                                 disabled={!isEditingCOGS}
                                                                 placeholder="e.g., 15750"
@@ -1669,7 +1712,7 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                                             <label className="text-silver-dark text-sm">Rate Date</label>
                                                             <input
                                                                 type="date"
-                                                                value={rateDate}
+                                                                value={rateDate || ''}
                                                                 onChange={(e) => setRateDate(e.target.value)}
                                                                 disabled={!isEditingCOGS}
                                                                 className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1738,135 +1781,193 @@ const ShipmentDetailModalEnhanced = ({ isOpen, onClose, shipment, onUpdate }) =>
                                                 {shipment.serviceType === 'sea' && (
                                                     <div>
                                                         <label className="text-silver-dark text-sm">Ocean Freight ({cogsCurrency})</label>
-                                                        <input
-                                                            type="text"
-                                                            value={cogsData.oceanFreight ? parseFloat(cogsData.oceanFreight.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                            onChange={(e) => {
-                                                                const value = e.target.value.replace(/\./g, '');
-                                                                setCogsData({ ...cogsData, oceanFreight: value });
-                                                            }}
-                                                            disabled={!isEditingCOGS}
-                                                            placeholder="0"
-                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        />
+                                                        {isEditingCOGS ? (
+                                                            <input
+                                                                type="text"
+                                                                value={cogsData.oceanFreight ? parseFloat(cogsData.oceanFreight.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value.replace(/\./g, '');
+                                                                    setCogsData({ ...cogsData, oceanFreight: value });
+                                                                }}
+                                                                placeholder="0"
+                                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                            />
+                                                        ) : (
+                                                            <p className="text-silver-light font-medium mt-1">
+                                                                {cogsData.oceanFreight ? parseFloat(cogsData.oceanFreight).toLocaleString('id-ID') : '-'}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {shipment.serviceType === 'air' && (
                                                     <div>
                                                         <label className="text-silver-dark text-sm">Air Freight ({cogsCurrency})</label>
-                                                        <input
-                                                            type="text"
-                                                            value={cogsData.airFreight ? parseFloat(cogsData.airFreight.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                            onChange={(e) => {
-                                                                const value = e.target.value.replace(/\./g, '');
-                                                                setCogsData({ ...cogsData, airFreight: value });
-                                                            }}
-                                                            placeholder="0"
-                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                        />
+                                                        {isEditingCOGS ? (
+                                                            <input
+                                                                type="text"
+                                                                value={cogsData.airFreight ? parseFloat(cogsData.airFreight.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value.replace(/\./g, '');
+                                                                    setCogsData({ ...cogsData, airFreight: value });
+                                                                }}
+                                                                placeholder="0"
+                                                                className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                            />
+                                                        ) : (
+                                                            <p className="text-silver-light font-medium mt-1">
+                                                                {cogsData.airFreight ? parseFloat(cogsData.airFreight).toLocaleString('id-ID') : '-'}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 )}
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Trucking ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.trucking ? parseFloat(cogsData.trucking.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, trucking: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.trucking ? parseFloat(cogsData.trucking.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, trucking: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.trucking ? parseFloat(cogsData.trucking).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">THC - Terminal Handling ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.thc ? parseFloat(cogsData.thc.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, thc: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.thc ? parseFloat(cogsData.thc.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, thc: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.thc ? parseFloat(cogsData.thc).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Documentation Fee ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.documentation ? parseFloat(cogsData.documentation.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, documentation: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.documentation ? parseFloat(cogsData.documentation.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, documentation: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.documentation ? parseFloat(cogsData.documentation).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Customs Clearance ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.customs ? parseFloat(cogsData.customs.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, customs: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.customs ? parseFloat(cogsData.customs.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, customs: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.customs ? parseFloat(cogsData.customs).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Insurance ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.insurance ? parseFloat(cogsData.insurance.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, insurance: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.insurance ? parseFloat(cogsData.insurance.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, insurance: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.insurance ? parseFloat(cogsData.insurance).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Demurrage/Detention ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.demurrage ? parseFloat(cogsData.demurrage.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, demurrage: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.demurrage ? parseFloat(cogsData.demurrage.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, demurrage: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.demurrage ? parseFloat(cogsData.demurrage).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Other Costs ({cogsCurrency})</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.other ? parseFloat(cogsData.other.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value.replace(/\./g, '');
-                                                            setCogsData({ ...cogsData, other: value });
-                                                        }}
-                                                        placeholder="0"
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.other ? parseFloat(cogsData.other.toString().replace(/\./g, '')).toLocaleString('id-ID') : ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/\./g, '');
+                                                                setCogsData({ ...cogsData, other: value });
+                                                            }}
+                                                            placeholder="0"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.other ? parseFloat(cogsData.other).toLocaleString('id-ID') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-silver-dark text-sm">Other Description</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cogsData.otherDescription}
-                                                        onChange={(e) => setCogsData({ ...cogsData, otherDescription: e.target.value })}
-                                                        disabled={!isEditingCOGS}
-                                                        placeholder="Describe other costs..."
-                                                        className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    />
+                                                    {isEditingCOGS ? (
+                                                        <input
+                                                            type="text"
+                                                            value={cogsData.otherDescription}
+                                                            onChange={(e) => setCogsData({ ...cogsData, otherDescription: e.target.value })}
+                                                            placeholder="Description for other costs"
+                                                            className="w-full mt-1 px-3 py-2 bg-dark-surface border border-dark-border rounded text-silver-light"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-silver-light font-medium mt-1">
+                                                            {cogsData.otherDescription || '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="mt-6">

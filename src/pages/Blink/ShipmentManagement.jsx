@@ -66,7 +66,9 @@ const ShipmentManagement = () => {
                 hawb: s.hawb || null,
                 hbl: s.hbl || null,
                 mbl: s.mbl || null,
-                consignee_name: s.consignee_name || null
+                consignee_name: s.consignee_name || null,
+                shipperName: s.shipper_name || s.shipper || null,
+                shipper: s.shipper || s.shipper_name || null
             }));
 
             console.log(`✅ Mapped ${mapped.length} shipments`);

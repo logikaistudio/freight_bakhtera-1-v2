@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useData } from '../../context/DataContext';
-import DataTable from '../../components/Common/DataTable';
-import Modal from '../../components/Common/Modal';
-import Button from '../../components/Common/Button';
+import { useData } from '../../../context/DataContext';
+import DataTable from '../../../components/Common/DataTable';
+import Modal from '../../../components/Common/Modal';
+import Button from '../../../components/Common/Button';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

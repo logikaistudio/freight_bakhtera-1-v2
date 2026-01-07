@@ -51,11 +51,11 @@ import ApprovalManager from './pages/Bridge/ApprovalManager';
 
 // Big Module
 import BigDashboard from './pages/Big/BigDashboard';
-import EventManagement from './pages/Big/EventManagement';
-import BigQuotations from './pages/Big/BigQuotations';
-import BigInvoices from './pages/Big/BigInvoices';
-import BigCosts from './pages/Big/BigCosts';
-import BigAR from './pages/Big/BigAR';
+import EventManagement from './pages/Big/Operations/EventManagement';
+import BigQuotations from './pages/Big/Sales/Quotations';
+import BigInvoices from './pages/Big/Finance/Invoices';
+import BigCosts from './pages/Big/Operations/EventCosts';
+import BigAR from './pages/Big/Finance/AccountsReceivable';
 
 // Pabean Module
 import PabeanDashboard from './pages/Pabean/PabeanDashboard';
@@ -141,11 +141,22 @@ function App() {
 
             {/* Big Module */}
             <Route path="/big" element={<BigDashboard />} />
-            <Route path="/big/events" element={<EventManagement />} />
+
+            {/* Sales */}
             <Route path="/big/quotations" element={<BigQuotations />} />
-            <Route path="/big/invoices" element={<BigInvoices />} />
+            <Route path="/big/sales/quotations" element={<BigQuotations />} />
+
+            {/* Operations */}
+            <Route path="/big/events" element={<EventManagement />} />
+            <Route path="/big/operations/events" element={<EventManagement />} />
             <Route path="/big/costs" element={<BigCosts />} />
+            <Route path="/big/operations/costs" element={<BigCosts />} />
+
+            {/* Finance */}
+            <Route path="/big/invoices" element={<BigInvoices />} />
+            <Route path="/big/finance/invoices" element={<BigInvoices />} />
             <Route path="/big/ar" element={<BigAR />} />
+            <Route path="/big/finance/ar" element={<BigAR />} />
 
             {/* Pabean Module */}
             <Route path="/pabean" element={<PabeanDashboard />} />

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import {
     DollarSign, Plus, Search, RefreshCw, Edit, Trash2, Check,
     Eye, ChevronRight, ChevronDown
 } from 'lucide-react';
-import Button from '../../components/Common/Button';
-import Modal from '../../components/Common/Modal';
+import Button from '../../../components/Common/Button';
+import Modal from '../../../components/Common/Modal';
 
 const BigCosts = () => {
     const [costs, setCosts] = useState([]);

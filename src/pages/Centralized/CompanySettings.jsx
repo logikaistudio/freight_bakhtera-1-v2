@@ -27,6 +27,7 @@ const CompanySettings = () => {
     const [logoUrl, setLogoUrl] = useState('');
     const [logoPreview, setLogoPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Bank account modal state
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
@@ -53,7 +54,9 @@ const CompanySettings = () => {
 
     // Handle company info save
     const handleSaveCompanyInfo = async () => {
+        setIsSaving(true);
         try {
+            console.log('💾 Saving company info...');
             await updateCompanySettings({
                 company_name: companyName,
                 company_address: companyAddress,
@@ -63,10 +66,17 @@ const CompanySettings = () => {
                 company_npwp: companyNpwp,
                 logo_url: logoUrl
             });
+            console.log('✅ Company info saved!');
+
+            // Refresh data from database
+            await fetchCompanySettings();
+
             alert('✅ Informasi perusahaan berhasil disimpan');
         } catch (error) {
             console.error('Error saving company info:', error);
             alert('❌ Gagal menyimpan: ' + error.message);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -268,8 +278,8 @@ const CompanySettings = () => {
 
                 {/* Save Button */}
                 <div className="flex justify-end">
-                    <Button onClick={handleSaveCompanyInfo}>
-                        Simpan Informasi
+                    <Button onClick={handleSaveCompanyInfo} disabled={isSaving}>
+                        {isSaving ? '⏳ Menyimpan...' : '💾 Simpan Informasi'}
                     </Button>
                 </div>
             </div>

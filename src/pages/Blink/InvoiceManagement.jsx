@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useData } from '../../context/DataContext';
+import { generateInvoiceNumber } from '../../utils/documentNumbers';
 import Button from '../../components/Common/Button';
 import Modal from '../../components/Common/Modal';
 import {
@@ -11,6 +13,7 @@ import {
 
 const InvoiceManagement = () => {
     const navigate = useNavigate();
+    const { companySettings, bankAccounts } = useData();
     const [invoices, setInvoices] = useState([]);
     const [quotations, setQuotations] = useState([]);
     const [shipments, setShipments] = useState([]);
@@ -308,10 +311,10 @@ const InvoiceManagement = () => {
         try {
             const { subtotal, taxAmount, total } = calculateTotals();
 
-            // Generate invoice number
-            const year = new Date().getFullYear();
-            const count = invoices.length + 1;
-            const invoiceNumber = `INV-${year}-${String(count).padStart(4, '0')}`;
+            // Generate invoice number based on quotation number
+            // Format: INV-BLKYYMM-XXXX (follows quotation number)
+            const quotationNum = selectedQuotation?.quotation_number || selectedQuotation?.quotationNumber || formData.job_number;
+            const invoiceNumber = generateInvoiceNumber(quotationNum);
 
             const newInvoice = {
                 invoice_number: invoiceNumber,
@@ -651,12 +654,11 @@ const InvoiceManagement = () => {
                     <div class="company-info">
                         <div>
                             <h3>FROM:</h3>
-                            <div class="company-name">YOUR COMPANY NAME</div>
-                            <p>Company Address Line 1</p>
-                            <p>City, Province, Postal Code</p>
-                            <p>Phone: +62 xxx xxxx xxxx</p>
-                            <p>Email: info@yourcompany.com</p>
-                            <p style="margin-top: 4px;"><strong>NPWP: 00.000.000.0-000.000</strong></p>
+                            <div class="company-name">${companySettings?.company_name || 'PT Bakhtera Satu Indonesia'}</div>
+                            <p>${(companySettings?.company_address || 'Jakarta, Indonesia').replace(/\n/g, '<br/>')}</p>
+                            ${companySettings?.company_phone ? `<p>Phone: ${companySettings.company_phone}</p>` : ''}
+                            ${companySettings?.company_email ? `<p>Email: ${companySettings.company_email}</p>` : ''}
+                            ${companySettings?.company_npwp ? `<p style="margin-top: 4px;"><strong>NPWP: ${companySettings.company_npwp}</strong></p>` : ''}
                         </div>
                         <div>
                             <h3>BILL TO:</h3>
@@ -729,17 +731,15 @@ const InvoiceManagement = () => {
                             <div style="padding: 10px; background: #f9f9f9; border-left: 3px solid #0070BB; font-size: 9px;">
                                 <strong style="display: block; margin-bottom: 8px;">Bank Account:</strong>
                                 
+                                ${bankAccounts && bankAccounts.length > 0 ? bankAccounts.map(bank => `
                                 <div style="margin-bottom: 8px;">
-                                    <div style="font-weight: bold; font-size: 10px;">Bank BCA</div>
-                                    <div style="color: #666;">Account: 1234567890</div>
-                                    <div style="color: #666;">Name: Your Company Name</div>
+                                    <div style="font-weight: bold; font-size: 10px;">${bank.bank_name || 'Bank'}</div>
+                                    <div style="color: #666;">Account: ${bank.account_number}</div>
+                                    <div style="color: #666;">Name: ${bank.account_holder}</div>
                                 </div>
-                                
-                                <div>
-                                    <div style="font-weight: bold; font-size: 10px;">Bank Mandiri</div>
-                                    <div style="color: #666;">Account: 0987654321</div>
-                                    <div style="color: #666;">Name: Your Company Name</div>
-                                </div>
+                                `).join('') : `
+                                <div style="color: #666; font-style: italic;">No bank account details available</div>
+                                `}
                             </div>
                         </div>
                         
@@ -1022,6 +1022,10 @@ const InvoiceManagement = () => {
                             setShowViewModal(false);
                         }}
                         onPrint={() => handlePrintInvoice(selectedInvoice)}
+                        onPreview={() => {
+                            setPreviewInvoiceData(selectedInvoice);
+                            setShowPrintPreview(true);
+                        }}
                         onSubmit={() => handleSubmitInvoice(selectedInvoice)}
                         statusConfig={statusConfig}
                     />
@@ -1056,6 +1060,7 @@ const InvoiceManagement = () => {
                             setShowPrintPreview(false);
                             setPreviewInvoiceData(null);
                         }}
+                        onPrint={() => handlePrintInvoice(previewInvoiceData)}
                     />
                 )
             }
@@ -1448,7 +1453,7 @@ const InvoiceCreateModal = ({ quotations, shipments, formData, setFormData, sele
 };
 
 // Invoice View Modal Component
-const InvoiceViewModal = ({ invoice, formatCurrency, onClose, onPayment, onPrint, onSubmit, statusConfig }) => {
+const InvoiceViewModal = ({ invoice, formatCurrency, onClose, onPayment, onPrint, onPreview, onSubmit, statusConfig }) => {
     const [payments, setPayments] = useState([]);
     const [loadingPayments, setLoadingPayments] = useState(true);
 
@@ -1749,6 +1754,24 @@ const InvoiceViewModal = ({ invoice, formatCurrency, onClose, onPayment, onPrint
                         >
                             Tutup
                         </button>
+                        {onPrint && (
+                            <button
+                                onClick={onPrint}
+                                className="flex items-center gap-2 px-6 py-2 border border-blue-500 text-blue-400 rounded-lg hover:bg-blue-500/10 smooth-transition"
+                            >
+                                <div className="w-4 h-4">🖨️</div>
+                                Print
+                            </button>
+                        )}
+                        {onPreview && (
+                            <button
+                                onClick={onPreview}
+                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg smooth-transition font-semibold"
+                            >
+                                <Eye className="w-4 h-4" />
+                                Preview
+                            </button>
+                        )}
                         {invoice.status === 'draft' && onSubmit && (
                             <button
                                 onClick={onSubmit}
@@ -2035,7 +2058,7 @@ const PaymentRecordModal = ({ invoice, formatCurrency, onClose, onSuccess }) => 
 };
 
 // Print Preview Modal Component
-const PrintPreviewModal = ({ invoice, formatCurrency, onClose }) => {
+const PrintPreviewModal = ({ invoice, formatCurrency, onClose, onPrint, companySettings }) => {
     const handlePrint = () => {
         window.print();
     };
@@ -2047,7 +2070,7 @@ const PrintPreviewModal = ({ invoice, formatCurrency, onClose }) => {
                     <h2 className="text-2xl font-bold gradient-text">Print Preview</h2>
                     <div className="flex gap-2 print:hidden">
                         <button
-                            onClick={handlePrint}
+                            onClick={onPrint || handlePrint}
                             className="flex items-center gap-2 px-4 py-2 bg-accent-orange hover:bg-accent-orange/80 text-white rounded-lg smooth-transition font-semibold"
                         >
                             <Download className="w-4 h-4" />
@@ -2075,11 +2098,11 @@ const PrintPreviewModal = ({ invoice, formatCurrency, onClose }) => {
                         <div>
                             <h3 className="text-sm font-bold text-gray-700 mb-2">FROM:</h3>
                             <div className="text-sm text-gray-800">
-                                <p className="font-bold text-base">YOUR COMPANY NAME</p>
-                                <p className="mt-2">Company Address Line 1</p>
-                                <p>City, Province, Postal Code</p>
-                                <p className="mt-2">Phone: +62 xxx xxxx xxxx</p>
-                                <p>Email: info@yourcompany.com</p>
+                                <p className="font-bold text-base text-[#0070BB]">{companySettings?.company_name || 'PT Bakhtera Satu Indonesia'}</p>
+                                <p className="mt-2 whitespace-pre-wrap">{companySettings?.company_address || 'Jakarta, Indonesia'}</p>
+                                {companySettings?.company_phone && <p className="mt-2">Phone: {companySettings.company_phone}</p>}
+                                {companySettings?.company_email && <p>Email: {companySettings.company_email}</p>}
+                                {companySettings?.company_npwp && <p className="mt-1 font-semibold">NPWP: {companySettings.company_npwp}</p>}
                             </div>
                         </div>
 
