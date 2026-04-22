@@ -31,6 +31,15 @@ const PengajuanManagement = () => {
         outboundTransactions = [], // Added for calculating already outbound stock
         bridgeBusinessPartners = [] // NEW: Use Bridge Partners
     } = useData();
+
+    // Helper lists: prefer Bridge partners, fallback to old customers/vendors
+    const ownerList = (bridgeBusinessPartners && bridgeBusinessPartners.length > 0)
+        ? bridgeBusinessPartners.filter(p => p.is_customer)
+        : customers || [];
+
+    const shipperList = (bridgeBusinessPartners && bridgeBusinessPartners.length > 0)
+        ? bridgeBusinessPartners.filter(p => (p.is_shipper || p.is_vendor))
+        : vendors || [];
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(false);
     const [confirmDialog, setConfirmDialog] = useState({ show: false, quotationId: null });
@@ -1035,7 +1044,7 @@ const PengajuanManagement = () => {
                                     className="w-full"
                                 >
                                     <option value="">-- Pilih Pelanggan --</option>
-                                    {bridgeBusinessPartners.filter(p => p.is_customer).map(p => (
+                                    {ownerList.map(p => (
                                         <option key={p.id} value={p.partner_name}>
                                             {p.partner_name}
                                         </option>
@@ -1055,7 +1064,7 @@ const PengajuanManagement = () => {
                                     className="w-full"
                                 >
                                     <option value="">-- Pilih Shipper --</option>
-                                    {bridgeBusinessPartners.filter(p => p.is_shipper || p.is_vendor).map(p => (
+                                    {shipperList.map(p => (
                                         <option key={p.id} value={p.partner_name}>
                                             {p.partner_name}
                                         </option>
