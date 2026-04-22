@@ -156,29 +156,21 @@ export const DataProvider = ({ children }) => {
         bcDocumentDate: q.bc_document_date,
         bcDocType: q.bc_document_type,
         bcSupportingDocuments: q.bc_supporting_documents || [],
-        approvedDate: q.approved_date,
-        approvedBy: q.approved_by,
-        rejectionReason: q.rejection_reason,
-        rejectionDate: q.rejection_date,
+        validUntil: q.valid_until,
         itemCode: q.item_code,
-        // Outbound processing status
-        outboundStatus: q.outbound_status || null,
-        outboundDate: q.outbound_date || null,
-        // Source Reference Fields (For Outbound History)
-        sourcePengajuanId: q.source_pengajuan_id || null,
-        sourcePengajuanNumber: q.source_pengajuan_number || null,
-        sourceBcDocumentNumber: q.source_bc_document_number || null,
-        sourceBcDocumentDate: q.source_bc_document_date || null,
-        // Invoice / Currency fields
-        invoiceNumber: q.invoice_number || q.invoiceNumber || null,
-        invoiceValue: q.invoice_value || q.invoiceValue || null,
-        invoiceCurrency: q.invoice_currency || q.invoiceCurrency || 'IDR',
-        exchangeRate: q.exchange_rate || q.exchangeRate || null,
-        exchangeRateDate: q.exchange_rate_date || q.exchangeRateDate || null,
-        blNumber: q.bl_number || q.blNumber || null,
-        blDate: q.bl_date || q.blDate || null,
-        itemDate: q.item_date || q.itemDate || null,
+        // Pricing & Services fields
+        services: q.services || null,
+        customCosts: q.custom_costs || null,
+        discountType: q.discount_type || null,
+        discountValue: q.discount_value || null,
+        taxRate: q.tax_rate || null,
+        subtotalBeforeDiscount: q.subtotal_before_discount || null,
+        discountAmount: q.discount_amount || null,
+        subtotalAfterDiscount: q.subtotal_after_discount || null,
+        taxAmount: q.tax_amount || null,
+        grandTotal: q.grand_total || null,
     });
+
 
     // Shared Helper: Map Inbound DB -> State (freight_inbound schema)
     const mapInboundToState = (i) => {
@@ -212,7 +204,6 @@ export const DataProvider = ({ children }) => {
             value: i.value,
             sender: i.sender,
             assetName: i.asset_name,
-            assetId: i.item_code,
             createdAt: i.created_at,
             date: i.date,
             // Items array for BarangMasuk.jsx flatMap
@@ -257,7 +248,6 @@ export const DataProvider = ({ children }) => {
             receiver: o.receiver,
             destination: o.destination,
             assetName: o.asset_name,
-            assetId: o.item_code,
             createdAt: o.created_at,
             date: o.date,
             // Extracted Source Reference for Reconciliation
@@ -1179,28 +1169,24 @@ export const DataProvider = ({ children }) => {
         // Map transaction to snake_case for DB (Strictly match freight_inbound schema)
         const inboundPayload = {
             id: newTransaction.id,
-            // pengajuan_id? newTransaction.quotationId ?
-            // Schema has: pengajuan_id, pengajuan_number, customs_doc_type, customs_doc_number, customs_doc_date...
+            pengajuan_id: newTransaction.quotationId,
+            pengajuan_number: newTransaction.quotationNumber,
             asset_name: newTransaction.assetName,
-            // item_code? asset_id? Schema has 'item_code'
-            item_code: newTransaction.assetId,
+            item_code: newTransaction.itemCode,
             quantity: newTransaction.quantity,
             unit: newTransaction.unit,
             value: newTransaction.value,
             customs_doc_number: newTransaction.customsDocNumber,
             customs_doc_date: newTransaction.customsDocDate,
-            customs_doc_type: newTransaction.customsDocType, // Not doc_type
+            customs_doc_type: newTransaction.customsDocType,
             sender: newTransaction.sender,
             notes: newTransaction.notes,
             created_at: newTransaction.createdAt,
-            date: newTransaction.date, // Add date column mapping (NOT NULL)
-
-            // Map new fields to DB columns
+            date: newTransaction.date,
             hs_code: newTransaction.hsCode,
             serial_number: newTransaction.serialNumber,
             currency: newTransaction.currency,
             receipt_number: newTransaction.receiptNumber,
-
             documents: {
                 totalOperationalCost: newTransaction.totalOperationalCost,
                 totalCost: newTransaction.totalCost,
@@ -1364,8 +1350,9 @@ export const DataProvider = ({ children }) => {
         // Schema: id, pengajuan_id, pengajuan_number, customs_doc_type, customs_doc_number, customs_doc_date, receipt_number, date, destination, receiver, item_code, asset_name, quantity, unit, value, currency, records(jsonb?)
         const outboundPayload = {
             id: newTransaction.id,
-            // pengajuan_id?
-            item_code: newTransaction.assetId,
+            pengajuan_id: newTransaction.quotationId,
+            pengajuan_number: newTransaction.quotationNumber,
+            item_code: newTransaction.itemCode,
             asset_name: newTransaction.assetName,
             quantity: newTransaction.quantity,
             unit: newTransaction.unit,
@@ -1374,10 +1361,10 @@ export const DataProvider = ({ children }) => {
             customs_doc_date: newTransaction.customsDocDate,
             customs_doc_type: newTransaction.customsDocType,
             destination: newTransaction.destination,
-            receiver: newTransaction.receiver, // or customer?
+            receiver: newTransaction.receiver,
             notes: newTransaction.notes,
             created_at: newTransaction.createdAt,
-            date: newTransaction.date || new Date().toISOString().split('T')[0], // Add date column mapping (NOT NULL)
+            date: newTransaction.date || new Date().toISOString().split('T')[0],
             currency: newTransaction.currency || 'IDR',
             documents: {
                 totalOperationalCost: newTransaction.totalOperationalCost,
@@ -1900,10 +1887,12 @@ export const DataProvider = ({ children }) => {
             bc_document_number: quotation.bcDocumentNumber || null,
             bc_document_date: quotation.bcDocumentDate || null,
             bc_document_type: quotation.bcDocType || quotation.bcDocumentType || null,
+            title: quotation.title || null,
 
             // Dates
             date: quotation.date || new Date().toISOString().split('T')[0],
             submission_date: quotation.submissionDate || new Date().toISOString().split('T')[0],
+            valid_until: quotation.validUntil || null,
 
             // Status fields
             status: quotation.status || 'draft',
@@ -1916,16 +1905,25 @@ export const DataProvider = ({ children }) => {
             shipper: quotation.shipper || null,
             origin: quotation.origin || null,
             destination: quotation.destination || null,
-            // Source References (Outbound History)
-            source_pengajuan_id: quotation.sourcePengajuanId || null,
-            source_pengajuan_number: quotation.sourcePengajuanNumber || null,
-            source_bc_document_number: quotation.sourceBcDocumentNumber || null,
-            source_bc_document_date: quotation.sourceBcDocumentDate || null,
 
-            // JSONB fields
-            packages: quotation.packages || [],
-            documents: quotation.documents || [],
-            bc_supporting_documents: quotation.bcSupportingDocuments || [],
+            // JSONB fields - pricing & services
+            packages: quotation.packages || null,
+            services: quotation.services || null,
+            custom_costs: quotation.customCosts || null,
+
+            // Discount & Tax fields
+            discount_type: quotation.discountType || null,
+            discount_value: quotation.discountValue ? Number(quotation.discountValue) : null,
+            tax_rate: quotation.taxRate ? Number(quotation.taxRate) : null,
+            subtotal_before_discount: quotation.subtotalBeforeDiscount ? Number(quotation.subtotalBeforeDiscount) : null,
+            discount_amount: quotation.discountAmount ? Number(quotation.discountAmount) : null,
+            subtotal_after_discount: quotation.subtotalAfterDiscount ? Number(quotation.subtotalAfterDiscount) : null,
+            tax_amount: quotation.taxAmount ? Number(quotation.taxAmount) : null,
+            grand_total: quotation.grandTotal ? Number(quotation.grandTotal) : null,
+
+            // Supporting documents
+            bc_supporting_documents: quotation.bcSupportingDocuments || null,
+            documents: quotation.documents || null,
 
             // Additional fields
             notes: quotation.notes || null,
@@ -1933,32 +1931,14 @@ export const DataProvider = ({ children }) => {
             rejection_date: quotation.rejectionDate || null,
             pic: quotation.pic || null,
 
-            // Invoice / Currency fields
-            bl_number: quotation.blNumber || null,
-            bl_date: quotation.blDate || null,
-            invoice_number: quotation.invoiceNumber || null,
-            invoice_value: quotation.invoiceValue ? Number(quotation.invoiceValue) : null,
-            invoice_currency: quotation.invoiceCurrency || 'IDR',
-            exchange_rate: quotation.exchangeRate ? Number(quotation.exchangeRate) : null,
-            exchange_rate_date: quotation.exchangeRateDate || null,
-            item_date: quotation.itemDate || null,
-
             // Timestamps
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
-        // Handle documents JSONB - ensuring we save separate fields or wrap in object if needed
-        // Current logic mostly sends array of files. We'll upgrade this to object if source info exists.
-        if (quotation.sourcePengajuanId) {
-            newQuotation.documents = {
-                files: Array.isArray(quotation.documents) ? quotation.documents : [],
-                sourcePengajuanId: quotation.sourcePengajuanId,
-                sourcePengajuanNumber: quotation.sourcePengajuanNumber,
-                // Keep backward compatibility if other fields exist
-                ...(typeof quotation.documents === 'object' && !Array.isArray(quotation.documents) ? quotation.documents : {})
-            };
-            console.log('🔗 Linking Outbound to Inbound:', quotation.sourcePengajuanNumber);
+        // Handle documents JSONB field
+        if (quotation.documents) {
+            newQuotation.documents = Array.isArray(quotation.documents) ? quotation.documents : quotation.documents;
         }
 
         console.log('🔵 Inserting quotation with data:', newQuotation);
