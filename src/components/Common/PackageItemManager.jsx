@@ -315,10 +315,14 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
                                     className="w-full text-sm p-2 bg-dark-bg border border-dark-border rounded focus:border-accent-blue"
                                     value={formData.price}
                                     onChange={e => {
-                                        // Allow only digits, strip everything else, then reformat
-                                        const digits = e.target.value.replace(/[^\d]/g, '');
-                                        const num = parseInt(digits, 10);
-                                        setFormData({ ...formData, price: isNaN(num) ? '' : formatCurrency(num) });
+                                        // Allow digits, dots, and commas while typing
+                                        const val = e.target.value.replace(/[^\d.,]/g, '');
+                                        setFormData({ ...formData, price: val });
+                                    }}
+                                    onBlur={e => {
+                                        // Auto-format on blur to standard IDR format
+                                        const num = parseCurrency(e.target.value);
+                                        setFormData({ ...formData, price: isNaN(num) || num === 0 ? '' : formatCurrency(num) });
                                     }}
                                     placeholder="0"
                                 />
