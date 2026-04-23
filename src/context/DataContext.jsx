@@ -206,6 +206,13 @@ export const DataProvider = ({ children }) => {
             assetName: i.asset_name,
             createdAt: i.created_at,
             date: i.date,
+            // Exchange rate from pengajuan
+            kurs: i.kurs,
+            kursPengajuanId: i.kurs_pengajuan_id,
+            // Invoice value mapping
+            nilaiInvoice: i.nilai_invoice,
+            invoiceValue: i.nilai_invoice || i.invoice_value,
+            invoiceCurrency: i.invoice_currency,
             // Items array for BarangMasuk.jsx flatMap
             items: items,
             // Use the extracted array for UI mapping
@@ -250,6 +257,13 @@ export const DataProvider = ({ children }) => {
             assetName: o.asset_name,
             createdAt: o.created_at,
             date: o.date,
+            // Exchange rate from pengajuan
+            kurs: o.kurs,
+            kursPengajuanId: o.kurs_pengajuan_id,
+            // Invoice value mapping
+            nilaiInvoice: o.nilai_invoice,
+            invoiceValue: o.nilai_invoice || o.invoice_value,
+            invoiceCurrency: o.invoice_currency,
             // Extracted Source Reference for Reconciliation
             sourcePengajuanNumber: parsedDocs.source_pengajuan_number,
             // Items array for BarangKeluar.jsx flatMap

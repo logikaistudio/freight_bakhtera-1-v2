@@ -7,17 +7,19 @@ import { exportToCSV } from '../../../utils/exportCSV';
 import { exportToXLS } from '../../../utils/exportXLS';
 
 const BarangKeluar = () => {
-    const { inboundTransactions = [], companySettings, bridgeSettings } = useData();
+    const { inboundTransactions = [], outboundTransactions = [], companySettings, bridgeSettings } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-    // Filter outbound transactions only
-    const outboundTransactions = inboundTransactions.filter(t => t.direction === 'outbound');
+    // Use outboundTransactions if available, otherwise filter from inboundTransactions
+    const transactionsToUse = outboundTransactions && outboundTransactions.length > 0 
+        ? outboundTransactions 
+        : inboundTransactions.filter(t => t.direction === 'outbound');
 
     // Filter Transactions
-    const filteredTransactions = outboundTransactions.filter(t => {
+    const filteredTransactions = transactionsToUse.filter(t => {
         const docDate = new Date(t.date);
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
@@ -36,6 +38,8 @@ const BarangKeluar = () => {
 
     // Helper: Calculate Total Value
     const getTransactionTotal = (t) => {
+        // Jika ada invoiceValue di transaksi, gunakan itu sebagai total
+        if (t.invoiceValue) return Number(t.invoiceValue);
         return (t.items || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
     };
 
@@ -61,6 +65,8 @@ const BarangKeluar = () => {
             { header: 'No. Pabean', key: 'customsDocNumber', width: 20 },
             { header: 'Tgl Dokumen', key: 'customsDocDate', width: 12, align: 'center' },
             { header: 'Tujuan', key: 'destination', width: 25 },
+            { header: 'Kurs Pengajuan', key: 'kurs', width: 12, align: 'right' },
+            { header: 'Mata Uang', key: 'currency', width: 8, align: 'center' },
             { header: 'Jml Item', key: 'itemCount', width: 10, align: 'center' },
             { header: 'Total Nilai', key: 'totalValue', width: 15, align: 'right' }
         ];
@@ -70,6 +76,8 @@ const BarangKeluar = () => {
             no: idx + 1,
             customsDocDate: t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-',
             destination: t.destination || t.receiver || '-',
+            kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
+            currency: t.invoiceCurrency || t.currency || 'IDR',
             itemCount: t.items ? t.items.length : 0,
             totalValue: formatCurrency(getTransactionTotal(t))
         }));
@@ -85,6 +93,8 @@ const BarangKeluar = () => {
             { key: 'customsDocNumber', header: 'No. Pabean' },
             { key: 'date', header: 'Tgl Keluar' },
             { key: 'destination', header: 'Tujuan' },
+            { key: 'kurs', header: 'Kurs Pengajuan' },
+            { key: 'currency', header: 'Mata Uang' },
             { key: 'totalItems', header: 'Jml Item' },
             { key: 'totalValue', header: 'Total Nilai' }
         ];
@@ -93,6 +103,8 @@ const BarangKeluar = () => {
             ...t,
             date: new Date(t.date).toLocaleDateString('id-ID'),
             destination: t.destination || t.receiver || '-',
+            kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
+            currency: t.invoiceCurrency || t.currency || 'IDR',
             totalItems: t.items?.length || 0,
             totalValue: getTransactionTotal(t)
         }));
@@ -223,6 +235,7 @@ const BarangKeluar = () => {
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pabean</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Dok</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Tujuan</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Kurs</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml Item</th>
                                 <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
                             </tr>
@@ -230,7 +243,7 @@ const BarangKeluar = () => {
                         <tbody className="divide-y divide-dark-border">
                             {filteredTransactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="px-4 py-12 text-center text-silver-dark">
+                                    <td colSpan="8" className="px-4 py-12 text-center text-silver-dark">
                                         Tidak ada data yang ditemukan
                                     </td>
                                 </tr>
@@ -244,9 +257,12 @@ const BarangKeluar = () => {
                                             {t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-silver">{t.destination || t.receiver || '-'}</td>
+                                        <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
+                                            {t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
+                                        </td>
                                         <td className="px-4 py-3 text-sm text-silver text-center font-bold">{t.items ? t.items.length : 0}</td>
                                         <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
-                                            {getCurrencySymbol(t.currency || 'IDR')} {formatCurrency(getTransactionTotal(t))}
+                                            {getCurrencySymbol(t.invoiceCurrency || t.currency || 'IDR')} {formatCurrency(getTransactionTotal(t))}
                                         </td>
                                     </tr>
                                 ))

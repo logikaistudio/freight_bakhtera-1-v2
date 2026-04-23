@@ -33,6 +33,8 @@ const BarangMasuk = () => {
 
     // Helper: Calculate Total Value
     const getTransactionTotal = (t) => {
+        // Jika ada invoiceValue di transaksi, gunakan itu sebagai total
+        if (t.invoiceValue) return Number(t.invoiceValue);
         return (t.items || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
     };
 
@@ -58,6 +60,8 @@ const BarangMasuk = () => {
             { header: 'No. Pabean', key: 'customsDocNumber', width: 20 },
             { header: 'Tgl Dokumen', key: 'customsDocDate', width: 12, align: 'center' },
             { header: 'Pengirim', key: 'sender', width: 25 },
+            { header: 'Kurs Pengajuan', key: 'kurs', width: 12, align: 'right' },
+            { header: 'Mata Uang', key: 'currency', width: 8, align: 'center' },
             { header: 'Jml Item', key: 'itemCount', width: 10, align: 'center' },
             { header: 'Total Nilai', key: 'totalValue', width: 15, align: 'right' }
         ];
@@ -67,6 +71,8 @@ const BarangMasuk = () => {
             no: idx + 1,
             customsDocDate: t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-',
             itemCount: t.items ? t.items.length : 0,
+            kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
+            currency: t.invoiceCurrency || t.currency || 'IDR',
             totalValue: formatCurrency(getTransactionTotal(t))
         }));
 
@@ -81,6 +87,8 @@ const BarangMasuk = () => {
             { key: 'customsDocNumber', header: 'No. Pabean' },
             { key: 'date', header: 'Tgl Masuk' },
             { key: 'sender', header: 'Pengirim' },
+            { key: 'kurs', header: 'Kurs Pengajuan' },
+            { key: 'currency', header: 'Mata Uang' },
             { key: 'totalItems', header: 'Jml Item' },
             { key: 'totalValue', header: 'Total Nilai' }
         ];
@@ -89,6 +97,8 @@ const BarangMasuk = () => {
             ...t,
             date: new Date(t.date).toLocaleDateString('id-ID'),
             totalItems: t.items?.length || 0,
+            kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
+            currency: t.invoiceCurrency || t.currency || 'IDR',
             totalValue: getTransactionTotal(t)
         }));
 
@@ -115,11 +125,14 @@ const BarangMasuk = () => {
             { header: 'Uraian Barang', key: 'assetName', width: 30 },
             { header: 'Jml', key: 'quantity', width: 8, align: 'center', render: (i) => Number(i.quantity) || 0 },
             { header: 'Sat', key: 'unit', width: 8, align: 'center' },
+            { header: 'Kurs', key: 'currency', width: 8, align: 'center' },
             { header: 'Nilai Satuan', key: 'value', width: 15, align: 'right', render: (i) => formatCurrency(i.value) },
             { header: 'Total Nilai', key: 'total', width: 15, align: 'right', render: (i) => formatCurrency(i.value) }
         ];
 
-        exportToXLS(selectedTransaction.items || [], `Detail_${selectedTransaction.pengajuanNumber}`, headerRows, xlsColumns);
+        // Inject currency info to each item
+        const itemsWithCurrency = getSyncedItems(selectedTransaction).map(i => ({ ...i, currency: selectedTransaction.invoiceCurrency || selectedTransaction.currency || 'IDR' }));
+        exportToXLS(itemsWithCurrency, `Detail_${selectedTransaction.pengajuanNumber}`, headerRows, xlsColumns);
     };
 
     // Export Detail Modal to CSV
@@ -132,10 +145,29 @@ const BarangMasuk = () => {
             { key: 'assetName', header: 'Uraian Barang' },
             { key: 'quantity', header: 'Jumlah' },
             { key: 'unit', header: 'Satuan' },
+            { key: 'currency', header: 'Kurs' },
             { key: 'value', header: 'Nilai' }
         ];
+        const itemsWithCurrency = getSyncedItems(selectedTransaction).map(i => ({ ...i, currency: selectedTransaction.invoiceCurrency || selectedTransaction.currency || 'IDR' }));
+        exportToCSV(itemsWithCurrency, `Detail_${selectedTransaction.pengajuanNumber}`, columns);
+    };
 
-        exportToCSV(selectedTransaction.items || [], `Detail_${selectedTransaction.pengajuanNumber}`, columns);
+    // Helper: Sinkronisasi nilai item dan kurs dari pengajuan
+    const getSyncedItems = (t) => {
+        // Jika ada invoiceValue, bagi rata ke semua item (atau gunakan logic lain sesuai kebutuhan)
+        if (t.invoiceValue && t.items && t.items.length > 0) {
+            const perItemValue = Number(t.invoiceValue) / t.items.length;
+            return t.items.map(item => ({
+                ...item,
+                value: perItemValue,
+                currency: t.invoiceCurrency || t.currency || 'IDR',
+            }));
+        }
+        // Jika tidak, tetap gunakan value asli
+        return (t.items || []).map(item => ({
+            ...item,
+            currency: t.invoiceCurrency || t.currency || 'IDR',
+        }));
     };
 
     return (
@@ -218,6 +250,7 @@ const BarangMasuk = () => {
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pabean</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Dok</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Pengirim</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Kurs</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml Item</th>
                                 <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
                             </tr>
@@ -239,9 +272,12 @@ const BarangMasuk = () => {
                                             {t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-silver">{t.sender || t.supplier || '-'}</td>
+                                        <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
+                                            {t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
+                                        </td>
                                         <td className="px-4 py-3 text-sm text-silver text-center font-bold">{t.items ? t.items.length : 0}</td>
                                         <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
-                                            {getCurrencySymbol(t.currency || 'IDR')} {formatCurrency(getTransactionTotal(t))}
+                                            {getTransactionTotal(t) ? Number(getTransactionTotal(t)).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
                                     </tr>
                                 ))
@@ -313,7 +349,7 @@ const BarangMasuk = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-dark-border bg-white dark:bg-dark-surface">
-                                        {(selectedTransaction.items || []).map((item, idx) => (
+                                        {getSyncedItems(selectedTransaction).map((item, idx) => (
                                             <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                                 <td className="px-4 py-2.5 text-center text-xs text-gray-60:dark:text-silver">{item.sequenceNumber || item.noUrut || idx + 1}</td>
                                                 <td className="px-4 py-2.5 text-xs text-gray-800 dark:text-silver-light font-medium">{item.itemCode || '-'}</td>
@@ -322,7 +358,7 @@ const BarangMasuk = () => {
                                                 <td className="px-4 py-2.5 text-center text-xs font-bold text-gray-800 dark:text-white">{item.quantity}</td>
                                                 <td className="px-4 py-2.5 text-center text-xs text-gray-600 dark:text-silver">{item.unit || 'pcs'}</td>
                                                 <td className="px-4 py-2.5 text-right text-xs text-gray-800 dark:text-white font-medium">
-                                                    {getCurrencySymbol(selectedTransaction.currency || 'IDR')} {formatCurrency(item.value)}
+                                                    {getCurrencySymbol(item.currency || 'IDR')} {formatCurrency(item.value)}
                                                 </td>
                                             </tr>
                                         ))}
