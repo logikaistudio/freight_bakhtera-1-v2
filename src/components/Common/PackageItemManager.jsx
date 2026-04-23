@@ -111,13 +111,14 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
 
     const handleEdit = (item) => {
         if (readOnly) return;
+        const rawPrice = item.price || (item.value / item.quantity) || 0;
         setFormData({
             itemCode: item.itemCode || '',
             hsCode: item.hsCode || '',
             name: item.name,
             quantity: item.quantity,
             unit: item.unit || 'pcs',
-            price: item.price || (item.value / item.quantity) || 0, // Use numeric value directly
+            price: rawPrice ? formatCurrency(rawPrice) : '', // Display as formatted string
             currency: item.currency || 'IDR',
             exchangeRate: item.exchangeRate || '1',
             totalPrice: item.totalPrice || (item.quantity * item.price) || '',
@@ -309,12 +310,17 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
                             <div className="md:col-span-2">
                                 <label className="text-xs text-silver-dark block mb-1">Nominal (@)</label>
                                 <input
-                                    type="number"
-                                    step="0.01"
+                                    type="text"
+                                    inputMode="numeric"
                                     className="w-full text-sm p-2 bg-dark-bg border border-dark-border rounded focus:border-accent-blue"
                                     value={formData.price}
-                                    onChange={e => setFormData({ ...formData, price: e.target.value })}
-                                    placeholder="0.00"
+                                    onChange={e => {
+                                        // Allow only digits, strip everything else, then reformat
+                                        const digits = e.target.value.replace(/[^\d]/g, '');
+                                        const num = parseInt(digits, 10);
+                                        setFormData({ ...formData, price: isNaN(num) ? '' : formatCurrency(num) });
+                                    }}
+                                    placeholder="0"
                                 />
                             </div>
 

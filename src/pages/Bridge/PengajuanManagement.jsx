@@ -286,6 +286,24 @@ const PengajuanManagement = () => {
 
         console.log('💾 Updating pengajuan:', editModal.pengajuan.id, editFormData);
 
+        // Calculate approvedDate with correct local time
+        let calculatedApprovedDate = editModal.pengajuan.approvedDate;
+        if (editFormData.documentStatus === 'approved') {
+            const dateObj = new Date(editFormData.manualDate || new Date().toISOString().split('T')[0]);
+            const now = new Date();
+            if (editModal.pengajuan.approvedDate) {
+                const old = new Date(editModal.pengajuan.approvedDate);
+                if (!isNaN(old.getTime())) {
+                    dateObj.setHours(old.getHours(), old.getMinutes(), old.getSeconds());
+                } else {
+                    dateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+                }
+            } else {
+                dateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            }
+            calculatedApprovedDate = dateObj.toISOString();
+        }
+
         // Call update function from DataContext
         if (updateQuotation) {
             const updatedData = {
@@ -294,7 +312,7 @@ const PengajuanManagement = () => {
                 // Also update customs status when document is approved
                 customsStatus: editFormData.documentStatus === 'approved' ? 'approved' : editModal.pengajuan.customsStatus,
                 // USE MANUAL DATE FOR APPROVED DATE
-                approvedDate: editFormData.documentStatus === 'approved' ? (editFormData.manualDate || new Date().toISOString().split('T')[0]) : editModal.pengajuan.approvedDate,
+                approvedDate: calculatedApprovedDate,
                 approvedBy: editFormData.documentStatus === 'approved' ? 'Admin' : editModal.pengajuan.approvedBy
             };
 

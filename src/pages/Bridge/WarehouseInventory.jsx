@@ -19,6 +19,8 @@ const WarehouseInventory = () => {
     const [selectedPengajuan, setSelectedPengajuan] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState(null);
+    // Tambahan: State untuk jam masuk (entryTime) saat edit
+    const [entryTime, setEntryTime] = useState('');
 
     // Mutation modal states
     const [showMutationModal, setShowMutationModal] = useState(false);
@@ -97,6 +99,16 @@ const WarehouseInventory = () => {
     const handleRowClick = (pengajuan) => {
         setSelectedPengajuan(pengajuan);
         setEditData(JSON.parse(JSON.stringify(pengajuan)));
+        // Ambil jam dari approvedDate jika ada, format ke HH:mm
+        let jam = '';
+        const dateStr = pengajuan.approvedDate || pengajuan.approved_date;
+        if (dateStr) {
+            try {
+                const d = new Date(dateStr);
+                jam = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            } catch {}
+        }
+        setEntryTime(jam);
         setIsEditing(false);
         setShowMutationModal(false);
     };
@@ -112,19 +124,53 @@ const WarehouseInventory = () => {
 
     const handleStartEdit = () => {
         if (!hasEdit) return;
+        // Saat mulai edit, pastikan entryTime diisi dari data
+        let jam = entryTime;
+        if (!jam && editData) {
+            const dateStr = editData.approvedDate || editData.approved_date;
+            if (dateStr) {
+                try {
+                    const d = new Date(dateStr);
+                    jam = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                } catch {}
+            }
+        }
+        setEntryTime(jam);
         setIsEditing(true);
     };
 
     const handleCancelEdit = () => {
         setEditData(JSON.parse(JSON.stringify(selectedPengajuan)));
+        // Reset entryTime ke data awal
+        let jam = '';
+        const dateStr = selectedPengajuan?.approvedDate || selectedPengajuan?.approved_date;
+        if (dateStr) {
+            try {
+                const d = new Date(dateStr);
+                jam = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            } catch {}
+        }
+        setEntryTime(jam);
         setIsEditing(false);
     };
 
     const handleSaveEdit = async () => {
         try {
+            let approvedDateISO = editData.approvedDate || editData.approved_date || editData.submissionDate || editData.submission_date || new Date().toISOString();
+            if ((editData.approvedDate || editData.approved_date || editData.submissionDate || editData.submission_date) && entryTime) {
+                let dateObj = new Date(editData.approvedDate || editData.approved_date || editData.submissionDate || editData.submission_date);
+                if (isNaN(dateObj.getTime())) dateObj = new Date();
+                const [hours, minutes] = entryTime.split(':');
+                dateObj.setHours(parseInt(hours, 10));
+                dateObj.setMinutes(parseInt(minutes, 10));
+                approvedDateISO = dateObj.toISOString();
+            }
+
             // Sanitize: Remove temporary mutation fields before saving
             const cleanedData = {
                 ...editData,
+                approvedDate: approvedDateISO,
+                approved_date: approvedDateISO,
                 packages: (editData.packages || []).map(pkg => ({
                     ...pkg,
                     items: (pkg.items || []).map(item => {
@@ -243,8 +289,9 @@ const WarehouseInventory = () => {
                     }
                 }
                 alert(`Data berhasil disimpan! ${mutations.length} mutasi diproses.`);
-
-                // Create approval request for monitoring
+                // Auto-navigate to Goods Movement page after inline mutations
+                navigate(`/bridge/goods-movement?pengajuan=${encodeURIComponent(qNumber)}`);
+                handleCloseDetail();
                 if (requestApproval) {
                     const userName = user?.full_name || user?.username || 'User';
                     const userId = user?.id || null;
@@ -266,7 +313,8 @@ const WarehouseInventory = () => {
                 alert('Data berhasil disimpan!');
             }
 
-            setSelectedPengajuan(editData);
+            // Update selectedPengajuan dengan data baru (approvedDate sudah update)
+            setSelectedPengajuan({ ...editData, approvedDate: approvedDateISO, approved_date: approvedDateISO });
             setIsEditing(false);
         } catch (error) {
             console.error('❌ Gagal menyimpan data:', error);
@@ -1272,7 +1320,14 @@ const WarehouseInventory = () => {
                                                     {isEditing ? <input type="date" value={editData.submissionDate || editData.submission_date || ''} onChange={(e) => setEditData({ ...editData, submissionDate: e.target.value })} className="px-1 py-0.5 text-xs border rounded" /> : formatDate(displayData.submissionDate || displayData.submission_date)}
                                                 </td>
                                                 <td className="px-2 py-0.5 text-xs text-gray-700 dark:text-silver text-center">
-                                                    {isEditing ? <input type="time" value={editData.entryTime || ''} onChange={(e) => setEditData({ ...editData, entryTime: e.target.value })} className="px-1 py-0.5 text-xs border rounded" /> : formatTime(displayData.approvedDate || displayData.approved_date)}
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="time"
+                                                            value={entryTime || ''}
+                                                            onChange={e => setEntryTime(e.target.value)}
+                                                            className="px-1 py-0.5 text-xs border rounded"
+                                                        />
+                                                    ) : formatTime(displayData.approvedDate || displayData.approved_date)}
                                                 </td>
                                                 <td className="px-2 py-0.5 text-xs text-gray-700 dark:text-silver text-center font-bold">{countPackagesAndItems(displayData).packageCount}</td>
                                                 <td className="px-2 py-0.5 text-xs text-gray-700 dark:text-silver text-center font-bold">{countPackagesAndItems(displayData).itemCount}</td>
