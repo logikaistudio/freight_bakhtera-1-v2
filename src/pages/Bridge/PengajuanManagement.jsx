@@ -330,48 +330,10 @@ const PengajuanManagement = () => {
                 if (packages.length > 0) {
                     let processedCount = 0;
 
-                    for (const pkg of packages) {
-                        const items = pkg.items || [];
-
-                        for (const item of items) {
-                            if (isOutbound) {
-                                // OUTBOUND: Saat approval, HANYA update status
-                                // Insert ke freight_outbound dilakukan di step terpisah (Proses Barang Keluar)
-                                // Ini sesuai flow: Approval → Konfirmasi Item Keluar → Insert freight_outbound
-                                console.log('📋 Outbound item approved, waiting for item exit confirmation');
-                                processedCount++;
-                            } else {
-                                // INBOUND TRANSACTION (existing logic)
-                                // Consistency fix: Use same robust property access
-                                const itemCodeIn = item.itemCode || item.item_code || `ITEM-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                                const itemNameIn = item.itemName || item.item_name || item.name || 'Unknown Item';
-
-                                const transaction = {
-                                    assetId: itemCodeIn,
-                                    assetName: itemNameIn,
-                                    quantity: Number(item.quantity) || 0,
-                                    unit: item.uom || 'pcs',
-                                    value: (Number(item.price) || 0) * (Number(item.quantity) || 0),
-
-                                    customsDocType: editModal.pengajuan.bcDocType,
-                                    customsDocNumber: editFormData.bcDocumentNumber,
-                                    customsDocDate: editFormData.bcDocumentDate,
-
-                                    hsCode: item.hsCode || item.hs_code || '',
-                                    serialNumber: (processedCount + 1).toString(),
-                                    currency: editModal.pengajuan.invoiceCurrency || 'IDR',
-                                    receiptNumber: editModal.pengajuan.quotationNumber || editModal.pengajuan.quotation_number || editModal.pengajuan.id,
-
-                                    date: editFormData.manualDate || editFormData.bcDocumentDate || editModal.pengajuan.submissionDate || editModal.pengajuan.submission_date || editModal.pengajuan.date,
-                                    sender: editModal.pengajuan.shipper,
-                                    notes: `Auto-generated from Quotation ${editModal.pengajuan.quotationNumber || editModal.pengajuan.quotation_number || editModal.pengajuan.id}`
-                                };
-
-                                await addInboundTransaction(transaction);
-                            }
-                            processedCount++;
-                        }
-                    }
+                        // Removed redundant loop calling addInboundTransaction here.
+                        // DataContext's updateQuotation handles full insertion of grouped transactions, 
+                        // warehouse inventory, customs docs, and finance invoices automatically.
+                        processedCount = packages.reduce((sum, pkg) => sum + (pkg.items?.length || 0), 0);
 
                     if (processedCount > 0) {
                         if (!isOutbound) {

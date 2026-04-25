@@ -65,6 +65,8 @@ const BarangKeluar = () => {
             { header: 'No. Pabean', key: 'customsDocNumber', width: 20 },
             { header: 'Tgl Dokumen', key: 'customsDocDate', width: 12, align: 'center' },
             { header: 'Tujuan', key: 'destination', width: 25 },
+            { header: 'Uraian Barang (Item)', key: 'itemSummary', width: 40 },
+            { header: 'Nominal Satuan', key: 'itemNominalSummary', width: 20 },
             { header: 'Kurs Pengajuan', key: 'kurs', width: 12, align: 'right' },
             { header: 'Mata Uang', key: 'currency', width: 8, align: 'center' },
             { header: 'Jml Item', key: 'itemCount', width: 10, align: 'center' },
@@ -76,9 +78,11 @@ const BarangKeluar = () => {
             no: idx + 1,
             customsDocDate: t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-',
             destination: t.destination || t.receiver || '-',
+            itemSummary: (t.items || []).map(i => i.assetName || i.goodsType || i.itemName || '-').join('; ') || '-',
+            itemNominalSummary: (t.items || []).map(i => formatCurrency(i.price || (i.quantity ? i.value / i.quantity : 0))).join('; ') || '-',
             kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
             currency: t.invoiceCurrency || t.currency || 'IDR',
-            itemCount: t.items ? t.items.length : 0,
+            itemCount: t.items ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0,
             totalValue: formatCurrency(getTransactionTotal(t))
         }));
 
@@ -93,6 +97,8 @@ const BarangKeluar = () => {
             { key: 'customsDocNumber', header: 'No. Pabean' },
             { key: 'date', header: 'Tgl Keluar' },
             { key: 'destination', header: 'Tujuan' },
+            { key: 'itemSummary', header: 'Uraian Barang (Item)' },
+            { key: 'itemNominalSummary', header: 'Nominal Satuan' },
             { key: 'kurs', header: 'Kurs Pengajuan' },
             { key: 'currency', header: 'Mata Uang' },
             { key: 'totalItems', header: 'Jml Item' },
@@ -103,9 +109,11 @@ const BarangKeluar = () => {
             ...t,
             date: new Date(t.date).toLocaleDateString('id-ID'),
             destination: t.destination || t.receiver || '-',
+            itemSummary: (t.items || []).map(i => i.assetName || i.goodsType || i.itemName || '-').join('; ') || '-',
+            itemNominalSummary: (t.items || []).map(i => formatCurrency(i.price || (i.quantity ? i.value / i.quantity : 0))).join('; ') || '-',
             kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
             currency: t.invoiceCurrency || t.currency || 'IDR',
-            totalItems: t.items?.length || 0,
+            totalItems: t.items ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0,
             totalValue: getTransactionTotal(t)
         }));
 
@@ -126,17 +134,17 @@ const BarangKeluar = () => {
         ];
 
         const xlsColumns = [
-            { header: 'No', key: 'noUrut', width: 5, align: 'center', render: (_, idx) => idx + 1 },
-            { header: 'Kode Barang', key: 'itemCode', width: 15 },
-            { header: 'HS Code', key: 'hsCode', width: 15 },
-            { header: 'Uraian Barang', key: 'assetName', width: 30 },
-            { header: 'Jml', key: 'quantity', width: 8, align: 'center', render: (i) => Number(i.quantity) || 0 },
-            { header: 'Sat', key: 'unit', width: 8, align: 'center' },
-            { header: 'Nilai Satuan', key: 'value', width: 15, align: 'right', render: (i) => formatCurrency(i.value) },
-            { header: 'Total Nilai', key: 'total', width: 15, align: 'right', render: (i) => formatCurrency(i.value) }
+            { header: 'HS', key: 'hsCode', width: 15 },
+            { header: 'ITEM', key: 'assetName', width: 30 },
+            { header: 'JML', key: 'quantity', width: 8, align: 'center', render: (i) => Number(i.quantity) || 0 },
+            { header: 'SAT', key: 'unit', width: 8, align: 'center' },
+            { header: 'NOMINAL', key: 'nominal', width: 15, align: 'right', render: (i) => formatCurrency(i.price || (i.quantity ? i.value / i.quantity : 0)) },
+            { header: 'TOTAL', key: 'value', width: 15, align: 'right', render: (i) => formatCurrency(i.value) },
+            { header: 'KURS', key: 'currency', width: 8, align: 'center' }
         ];
 
-        exportToXLS(selectedTransaction.items || [], `Detail_Outbound_${selectedTransaction.pengajuanNumber}`, headerRows, xlsColumns);
+        const itemsWithCurrency = getSyncedItems(selectedTransaction).map(i => ({ ...i, currency: selectedTransaction.invoiceCurrency || selectedTransaction.currency || 'IDR' }));
+        exportToXLS(itemsWithCurrency, `Detail_Outbound_${selectedTransaction.pengajuanNumber}`, headerRows, xlsColumns);
     };
 
     // Export Detail Modal to CSV
@@ -144,15 +152,21 @@ const BarangKeluar = () => {
         if (!selectedTransaction) return;
 
         const columns = [
-            { key: 'itemCode', header: 'Kode Barang' },
-            { key: 'hsCode', header: 'HS Code' },
-            { key: 'assetName', header: 'Uraian Barang' },
-            { key: 'quantity', header: 'Jumlah' },
-            { key: 'unit', header: 'Satuan' },
-            { key: 'value', header: 'Nilai' }
+            { key: 'hsCode', header: 'HS' },
+            { key: 'assetName', header: 'ITEM' },
+            { key: 'quantity', header: 'JML' },
+            { key: 'unit', header: 'SAT' },
+            { key: 'nominal', header: 'NOMINAL' },
+            { key: 'value', header: 'TOTAL' },
+            { key: 'currency', header: 'KURS' }
         ];
 
-        exportToCSV(selectedTransaction.items || [], `Detail_${selectedTransaction.pengajuanNumber}`, columns);
+        const itemsWithCurrency = getSyncedItems(selectedTransaction).map(i => ({ 
+            ...i, 
+            currency: selectedTransaction.invoiceCurrency || selectedTransaction.currency || 'IDR',
+            nominal: i.price || (i.quantity ? i.value / i.quantity : 0)
+        }));
+        exportToCSV(itemsWithCurrency, `Detail_${selectedTransaction.pengajuanNumber}`, columns);
     };
 
     return (
@@ -206,7 +220,7 @@ const BarangKeluar = () => {
                     </p>
                 </div>
                 <div className="glass-card p-4 rounded-lg border border-accent-green">
-                    <p className="text-xs text-silver-dark">Total Nilai (Filtered)</p>
+                    <p className="text-xs text-silver-dark">Total Nilai</p>
                     <p className="text-xl font-bold text-accent-green">
                         {formatCurrency(filteredTransactions.reduce((sum, t) => sum + getTransactionTotal(t), 0))}
                     </p>
@@ -235,21 +249,23 @@ const BarangKeluar = () => {
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pabean</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Dok</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Tujuan</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Kurs</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Uraian Barang (Item)</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Kurs</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml Item</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Nominal</th>
                                 <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
                             {filteredTransactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" className="px-4 py-12 text-center text-silver-dark">
+                                    <td colSpan="10" className="px-4 py-12 text-center text-silver-dark">
                                         Tidak ada data yang ditemukan
                                     </td>
                                 </tr>
                             ) : (
                                 filteredTransactions.map((t, idx) => (
-                                    <tr key={idx} className="hover:bg-dark-surface/50 transition-colors cursor-pointer" onClick={() => setSelectedTransaction(t)}>
+                                    <tr key={idx} className="hover:bg-dark-surface/50 transition-colors">
                                         <td className="px-4 py-3 text-sm text-accent-orange font-medium">{t.pengajuanNumber || '-'}</td>
                                         <td className="px-4 py-3 text-sm text-silver">{t.customsDocType || 'BC 3.0'}</td>
                                         <td className="px-4 py-3 text-sm text-silver font-mono">{t.customsDocNumber || '-'}</td>
@@ -257,10 +273,50 @@ const BarangKeluar = () => {
                                             {t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-silver">{t.destination || t.receiver || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
-                                            {t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
+                                        <td className="px-4 py-3 text-sm text-silver max-w-[280px]">
+                                            {(t.items && t.items.length > 0) ? (
+                                                <div className="space-y-0.5">
+                                                    {t.items.slice(0, 3).map((item, i) => (
+                                                        <div key={i} className="flex items-center gap-1.5 text-xs h-4">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-accent-orange/60 flex-shrink-0"></span>
+                                                            <span className="truncate">{item.assetName || item.goodsType || item.itemName || '-'}</span>
+                                                        </div>
+                                                    ))}
+                                                    {t.items.length > 3 && (
+                                                        <div className="flex items-center h-4">
+                                                            <span className="text-xs text-accent-orange/70 italic">+{t.items.length - 3} item lainnya</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-silver-dark text-xs italic">Tidak ada item</span>
+                                            )}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-silver text-center font-bold">{t.items ? t.items.length : 0}</td>
+                                        <td className="px-4 py-3 text-sm text-silver text-center font-medium">
+                                            {t.invoiceCurrency || t.currency || 'IDR'}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-silver text-center font-bold">
+                                            {t.items ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-silver text-right">
+                                            {(t.items && t.items.length > 0) ? (
+                                                <div className="space-y-0.5">
+                                                    {t.items.slice(0, 3).map((item, i) => {
+                                                        const nominal = item.price || (item.quantity ? item.value / item.quantity : 0);
+                                                        return (
+                                                            <div key={i} className="flex items-center justify-end text-xs h-4">
+                                                                <span>{formatCurrency(nominal)}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {t.items.length > 3 && (
+                                                        <div className="flex items-center justify-end h-4">
+                                                            <span className="text-xs italic opacity-0">-</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : '-'}
+                                        </td>
                                         <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
                                             {getCurrencySymbol(t.invoiceCurrency || t.currency || 'IDR')} {formatCurrency(getTransactionTotal(t))}
                                         </td>
@@ -324,36 +380,42 @@ const BarangKeluar = () => {
                                 <table className="w-full">
                                     <thead className="bg-accent-orange text-white">
                                         <tr>
-                                            <th className="px-4 py-2 text-center text-xs font-semibold w-12">NO.</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold">KODE BRG</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold">HS CODE</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold">URAIAN BARANG</th>
-                                            <th className="px-4 py-2 text-center text-xs font-semibold">JUMLAH</th>
-                                            <th className="px-4 py-2 text-center text-xs font-semibold">SATUAN</th>
-                                            <th className="px-4 py-2 text-right text-xs font-semibold">NILAI</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold">HS</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold">ITEM</th>
+                                            <th className="px-4 py-2 text-center text-xs font-semibold">JML</th>
+                                            <th className="px-4 py-2 text-center text-xs font-semibold">SAT</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold">NOMINAL</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold">TOTAL</th>
+                                            <th className="px-4 py-2 text-center text-xs font-semibold">KURS</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-dark-border bg-white dark:bg-dark-surface">
-                                        {(selectedTransaction.items || []).map((item, idx) => (
-                                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                                <td className="px-4 py-2.5 text-center text-xs text-gray-600 dark:text-silver">{idx + 1}</td>
-                                                <td className="px-4 py-2.5 text-xs text-gray-800 dark:text-silver-light font-medium">{item.itemCode || '-'}</td>
-                                                <td className="px-4 py-2.5 text-xs text-gray-600 dark:text-silver font-mono">{item.hsCode || '-'}</td>
-                                                <td className="px-4 py-2.5 text-xs text-gray-800 dark:text-silver-light">{item.assetName || item.itemName || item.goodsType || '-'}</td>
-                                                <td className="px-4 py-2.5 text-center text-xs font-bold text-gray-800 dark:text-white">{item.quantity || 0}</td>
-                                                <td className="px-4 py-2.5 text-center text-xs text-gray-600 dark:text-silver">{item.unit || 'pcs'}</td>
-                                                <td className="px-4 py-2.5 text-right text-xs text-gray-800 dark:text-white font-medium">
-                                                    {getCurrencySymbol(selectedTransaction.currency || 'IDR')} {formatCurrency(item.value)}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {(selectedTransaction.items || []).map((item, idx) => {
+                                            const nominal = item.price || (item.quantity ? item.value / item.quantity : 0);
+                                            return (
+                                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                                                    <td className="px-4 py-2.5 text-xs text-gray-600 dark:text-silver font-mono">{item.hsCode || '-'}</td>
+                                                    <td className="px-4 py-2.5 text-xs text-gray-800 dark:text-silver-light">{item.assetName || item.itemName || item.goodsType || '-'}</td>
+                                                    <td className="px-4 py-2.5 text-center text-xs font-bold text-gray-800 dark:text-white">{item.quantity || 0}</td>
+                                                    <td className="px-4 py-2.5 text-center text-xs text-gray-600 dark:text-silver">{item.unit || 'pcs'}</td>
+                                                    <td className="px-4 py-2.5 text-right text-xs text-gray-800 dark:text-white">
+                                                        {formatCurrency(nominal)}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-right text-xs text-gray-800 dark:text-white font-medium">
+                                                        {formatCurrency(item.value)}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-center text-xs text-gray-600 dark:text-silver">{item.currency || 'IDR'}</td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                     <tfoot className="bg-gray-50 dark:bg-white/5 border-t border-gray-200 dark:border-dark-border">
                                         <tr>
-                                            <td colSpan="6" className="px-4 py-2 text-right text-xs font-bold text-gray-700 dark:text-silver">GRAND TOTAL:</td>
+                                            <td colSpan="5" className="px-4 py-2 text-right text-xs font-bold text-gray-700 dark:text-silver">GRAND TOTAL:</td>
                                             <td className="px-4 py-2 text-right text-xs font-bold text-accent-green">
-                                                {getCurrencySymbol(selectedTransaction.currency || 'IDR')} {formatCurrency(getTransactionTotal(selectedTransaction))}
+                                                {formatCurrency(getTransactionTotal(selectedTransaction))}
                                             </td>
+                                            <td className="px-4 py-2 text-center text-xs font-bold text-accent-green">{selectedTransaction.currency || 'IDR'}</td>
                                         </tr>
                                     </tfoot>
                                 </table>

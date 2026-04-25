@@ -207,12 +207,12 @@ export const DataProvider = ({ children }) => {
             createdAt: i.created_at,
             date: i.date,
             // Exchange rate from pengajuan
-            kurs: i.kurs,
-            kursPengajuanId: i.kurs_pengajuan_id,
+            kurs: i.kurs || parsedDocs.kurs,
+            kursPengajuanId: i.kurs_pengajuan_id || parsedDocs.kursPengajuanId,
             // Invoice value mapping
-            nilaiInvoice: i.nilai_invoice,
-            invoiceValue: i.nilai_invoice || i.invoice_value,
-            invoiceCurrency: i.invoice_currency,
+            nilaiInvoice: i.nilai_invoice || parsedDocs.invoiceValue,
+            invoiceValue: i.nilai_invoice || i.invoice_value || parsedDocs.invoiceValue,
+            invoiceCurrency: i.invoice_currency || parsedDocs.invoiceCurrency,
             // Items array for BarangMasuk.jsx flatMap
             items: items,
             // Use the extracted array for UI mapping
@@ -258,12 +258,12 @@ export const DataProvider = ({ children }) => {
             createdAt: o.created_at,
             date: o.date,
             // Exchange rate from pengajuan
-            kurs: o.kurs,
-            kursPengajuanId: o.kurs_pengajuan_id,
+            kurs: o.kurs || parsedDocs.kurs,
+            kursPengajuanId: o.kurs_pengajuan_id || parsedDocs.kursPengajuanId,
             // Invoice value mapping
-            nilaiInvoice: o.nilai_invoice,
-            invoiceValue: o.nilai_invoice || o.invoice_value,
-            invoiceCurrency: o.invoice_currency,
+            nilaiInvoice: o.nilai_invoice || parsedDocs.invoiceValue,
+            invoiceValue: o.nilai_invoice || o.invoice_value || parsedDocs.invoiceValue,
+            invoiceCurrency: o.invoice_currency || parsedDocs.invoiceCurrency,
             // Extracted Source Reference for Reconciliation
             sourcePengajuanNumber: parsedDocs.source_pengajuan_number,
             // Items array for BarangKeluar.jsx flatMap
@@ -2444,7 +2444,10 @@ export const DataProvider = ({ children }) => {
                     documents: JSON.stringify({
                         bcSupportingDocuments: updatedQuotation.bcSupportingDocuments || [],
                         // Include items array in JSONB for Pabean display
-                        items: flatItems
+                        items: flatItems,
+                        kurs: updatedQuotation.exchangeRate || updatedQuotation.exchange_rate || quotation.exchange_rate,
+                        invoiceValue: updatedQuotation.invoiceValue || updatedQuotation.invoice_value || quotation.invoice_value,
+                        invoiceCurrency: updatedQuotation.invoiceCurrency || updatedQuotation.invoice_currency || quotation.invoice_currency
                     }),
 
                     notes: updatedQuotation.notes || '',
@@ -2477,11 +2480,62 @@ export const DataProvider = ({ children }) => {
                     await supabase.from('freight_inbound').insert([transactionData]);
                     // Use transactionForState with items array for local state (Pabean display)
                     setInboundTransactions(prev => [transactionForState, ...prev]);
+
+                    // Automatically generate finance invoice for inbound value
+                    const invoiceValStr = updatedQuotation.invoiceValue || updatedQuotation.invoice_value || quotation.invoice_value;
+                    const invoiceVal = Number(invoiceValStr) || transactionData.value || 0;
+                    if (invoiceVal > 0) {
+                        const goodsInvoice = {
+                            type: 'expense',
+                            category: 'Equipment',
+                            amount: invoiceVal,
+                            description: `Inbound - ${transactionData.asset_name} (${transactionData.quantity} ${transactionData.unit}) - Goods Value - BC: ${transactionData.customs_doc_number}`,
+                            module: 'bridge',
+                            date: transactionData.date,
+                            referenceType: 'inbound',
+                            referenceId: transactionData.id,
+                        };
+                        addFinanceTransaction(goodsInvoice);
+                    }
                 } else if (updatedQuotation.type === 'outbound') {
                     console.log('✅ Approved Outbound - Inserting to Supabase Outbound Log');
                     await supabase.from('freight_outbound').insert([transactionData]);
                     // Use transactionForState with items array for local state
                     setOutboundTransactions(prev => [transactionForState, ...prev]);
+                }
+
+                // Auto-create Customs Document for the entire approved pengajuan
+                const customsDocPayload = {
+                    id: (Date.now() + 1).toString(),
+                    document_type: transactionData.customs_doc_type,
+                    document_number: transactionData.customs_doc_number,
+                    document_date: transactionData.customs_doc_date,
+                    status: 'approved',
+                    created_at: new Date().toISOString(),
+                    notes: `Auto-generated for ${updatedQuotation.type}. Asset: ${transactionData.asset_name}, Qty: ${transactionData.quantity}`,
+                    documents: {
+                        transactionType: updatedQuotation.type,
+                        transactionId: transactionData.id,
+                        assetName: transactionData.asset_name,
+                        quantity: transactionData.quantity,
+                        value: transactionData.value
+                    }
+                };
+                const { error: customsError } = await supabase.from('freight_customs').insert([customsDocPayload]);
+                if (!customsError) {
+                    setCustomsDocuments(prev => [...prev, {
+                        id: customsDocPayload.id,
+                        docType: customsDocPayload.document_type,
+                        docNumber: customsDocPayload.document_number,
+                        docDate: customsDocPayload.document_date,
+                        transactionType: customsDocPayload.documents.transactionType,
+                        transactionId: customsDocPayload.documents.transactionId,
+                        assetName: customsDocPayload.documents.assetName,
+                        quantity: customsDocPayload.documents.quantity,
+                        value: customsDocPayload.documents.value,
+                        status: customsDocPayload.status,
+                        createdAt: customsDocPayload.created_at,
+                    }]);
                 }
 
                 // Update local warehouse inventory state with allItems for UI
