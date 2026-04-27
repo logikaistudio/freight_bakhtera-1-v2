@@ -378,7 +378,7 @@ const BarangMasuk = () => {
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
                                             <button
-                                                onClick={() => navigate(`/bridge/pengajuan?detail=${row.pengajuanNumber}`)}
+                                                onClick={() => navigate(`/bridge/pengajuan?detail=${encodeURIComponent(row.pengajuanNumber)}`)}
                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors text-xs font-medium"
                                                 title="Lihat Detail Pengajuan"
                                             >

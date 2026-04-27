@@ -62,19 +62,31 @@ const PengajuanManagement = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
 
+    // Handle closing detail modal and clearing URL params
+    const handleCloseDetailModal = () => {
+        handleCloseDetailModal();
+        if (searchParams.has('detail')) {
+            searchParams.delete('detail');
+            setSearchParams(searchParams, { replace: true });
+        }
+        // Also clear any history state if we came via navigate
+        if (window.history.replaceState) {
+            const url = new URL(window.location);
+            url.searchParams.delete('detail');
+            window.history.replaceState({}, '', url);
+        }
+    };
+
     React.useEffect(() => {
         const detailId = searchParams.get('detail');
         if (detailId && quotations.length > 0) {
-            const p = quotations.find(q => q.pengajuanNumber === detailId || q.id === detailId);
+            const p = quotations.find(q => q.pengajuanNumber === detailId || q.id === detailId || q.quotation_number === detailId);
             if (p) {
                 setSelectedPengajuan(p);
                 setShowDetailModal(true);
-                // Clear param after opening
-                searchParams.delete('detail');
-                setSearchParams(searchParams, { replace: true });
             }
         }
-    }, [searchParams, quotations, setSearchParams]);
+    }, [searchParams, quotations]);
 
     const [editFormData, setEditFormData] = useState({
         bcDocumentNumber: '',
@@ -1642,7 +1654,7 @@ const PengajuanManagement = () => {
                                 </p>
                             </div>
                             <button
-                                onClick={() => setShowDetailModal(false)}
+                                onClick={() => handleCloseDetailModal()}
                                 className="text-silver-dark hover:text-silver p-1"
                             >
                                 <X className="w-6 h-6" />
@@ -1803,7 +1815,7 @@ const PengajuanManagement = () => {
                         <div className="flex justify-between items-center gap-3 p-4 border-t border-dark-border bg-dark-surface">
                             <Button 
                                 variant="secondary" 
-                                onClick={() => setShowDetailModal(false)}
+                                onClick={() => handleCloseDetailModal()}
                             >
                                 Tutup
                             </Button>
@@ -1813,7 +1825,7 @@ const PengajuanManagement = () => {
                                     icon={Trash2}
                                     onClick={() => {  
                                         setDeleteConfirmModal({ show: true, pengajuanId: selectedPengajuan.id });
-                                        setShowDetailModal(false);
+                                        handleCloseDetailModal();
                                     }}
                                     className="hover:bg-red-500/20 hover:text-red-400"
                                 >
@@ -1824,7 +1836,7 @@ const PengajuanManagement = () => {
                                     icon={Edit2}
                                     onClick={() => {
                                         handleEditPengajuan(selectedPengajuan);
-                                        setShowDetailModal(false);
+                                        handleCloseDetailModal();
                                     }}
                                 >
                                     Edit
