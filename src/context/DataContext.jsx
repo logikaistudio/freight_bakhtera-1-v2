@@ -2369,9 +2369,6 @@ export const DataProvider = ({ children }) => {
         if (updatedData.invoiceCurrency !== undefined) dbUpdateData.invoice_currency = updatedData.invoiceCurrency;
         if (updatedData.exchangeRate !== undefined) dbUpdateData.exchange_rate = updatedData.exchangeRate ? Number(updatedData.exchangeRate) : null;
         if (updatedData.exchangeRateDate !== undefined) dbUpdateData.exchange_rate_date = updatedData.exchangeRateDate || null;
-        if (updatedData.blNumber !== undefined) dbUpdateData.bl_number = updatedData.blNumber;
-        if (updatedData.blDate !== undefined) dbUpdateData.bl_date = updatedData.blDate || null;
-        if (updatedData.itemDate !== undefined) dbUpdateData.item_date = updatedData.itemDate || null;
 
         // Always update timestamp
         dbUpdateData.updated_at = new Date().toISOString();
