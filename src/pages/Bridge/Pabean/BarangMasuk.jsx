@@ -296,11 +296,11 @@ const BarangMasuk = () => {
                 <div className="glass-card p-4 rounded-lg border border-orange-500">
                     <p className="text-xs text-silver-dark">Barang Masuk</p>
                     <p className="text-2xl font-bold text-orange-500">
-                        {filteredTransactions.reduce((sum, t) => sum + getTransactionQty(t), 0)}
+                        {flatRows.length}
                     </p>
                 </div>
                 <div className="glass-card p-4 rounded-lg border border-accent-green">
-                    <p className="text-xs text-silver-dark">Total Nilai</p>
+                    <p className="text-xs text-silver-dark">Jumlah Total</p>
                     <p className="text-xl font-bold text-accent-green">
                         {formatCurrency(filteredTransactions.reduce((sum, t) => sum + getTransactionTotal(t), 0))}
                     </p>
