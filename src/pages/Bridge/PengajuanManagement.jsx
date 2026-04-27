@@ -64,7 +64,7 @@ const PengajuanManagement = () => {
 
     // Handle closing detail modal and clearing URL params
     const handleCloseDetailModal = () => {
-        handleCloseDetailModal();
+        setShowDetailModal(false);
         if (searchParams.has('detail')) {
             searchParams.delete('detail');
             setSearchParams(searchParams, { replace: true });
