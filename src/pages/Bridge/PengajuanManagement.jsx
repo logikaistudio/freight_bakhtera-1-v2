@@ -7,7 +7,7 @@ import Button from '../../components/Common/Button';
 import PackageManager from '../../components/Common/PackageManager';
 import DocumentUploadManager from '../../components/Common/DocumentUploadManager';
 import WarehouseItemSelectorModal from '../../components/Bridge/WarehouseItemSelectorModal';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { exportToCSV } from '../../utils/exportCSV';
 import { useAuth } from '../../context/AuthContext';
 
@@ -59,6 +59,22 @@ const PengajuanManagement = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [showSplitViewModal, setShowSplitViewModal] = useState(false); // NEW: Split View Modal for item selection
     const [sourcePackagesForSplitView, setSourcePackagesForSplitView] = useState([]); // Source packages for split view
+
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    React.useEffect(() => {
+        const detailId = searchParams.get('detail');
+        if (detailId && quotations.length > 0) {
+            const p = quotations.find(q => q.pengajuanNumber === detailId || q.id === detailId);
+            if (p) {
+                setSelectedPengajuan(p);
+                setShowDetailModal(true);
+                // Clear param after opening
+                searchParams.delete('detail');
+                setSearchParams(searchParams, { replace: true });
+            }
+        }
+    }, [searchParams, quotations, setSearchParams]);
 
     const [editFormData, setEditFormData] = useState({
         bcDocumentNumber: '',

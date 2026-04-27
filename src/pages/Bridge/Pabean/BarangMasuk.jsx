@@ -6,6 +6,7 @@ import { formatCurrency } from '../../../utils/currencyFormatter';
 import { exportToCSV } from '../../../utils/exportCSV';
 import { exportToXLS } from '../../../utils/exportXLS';
 import DocumentPreviewModal from '../../../components/Common/DocumentPreviewModal';
+import { useNavigate } from 'react-router-dom';
 
 const BarangMasuk = () => {
     const { inboundTransactions = [], quotations = [], companySettings, bridgeSettings } = useData();
@@ -13,6 +14,7 @@ const BarangMasuk = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedTransaction, setSelectedTransaction] = useState(null);
+    const navigate = useNavigate();
     // Document gallery modal state
     const [docModal, setDocModal] = useState(null); // { title, docs[] }
     // Document preview state
@@ -375,23 +377,14 @@ const BarangMasuk = () => {
                                             {row.value ? Number(row.value).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
-                                            {(() => {
-                                                const docs = [
-                                                    ...(row._transaction.documents || []),
-                                                    ...(row._transaction.bcSupportingDocuments || [])
-                                                ];
-                                                return docs.length > 0 ? (
-                                                    <span
-                                                        onClick={() => handleOpenDocModal(row._transaction, row.pengajuanNumber)}
-                                                        className="text-accent-blue hover:text-blue-400 underline cursor-pointer text-xs whitespace-nowrap"
-                                                        title={`${docs.length} dokumen pendukung`}
-                                                    >
-                                                        Lihat Dokumen
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-silver-dark text-xs italic whitespace-nowrap">-</span>
-                                                );
-                                            })()}
+                                            <button
+                                                onClick={() => navigate(`/bridge/pengajuan?detail=${row.pengajuanNumber}`)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors text-xs font-medium"
+                                                title="Lihat Detail Pengajuan"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>Detail</span>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
