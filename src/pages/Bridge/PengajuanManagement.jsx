@@ -258,35 +258,42 @@ const PengajuanManagement = () => {
 
     const handlePreviewDocument = async (doc) => {
         try {
-            let src = doc.url || null;
+            let src = null;
 
-            // If not direct URL, try storageKey
+            // Step 1: Check inline/base64 fileData FIRST (fastest, no network needed)
+            const raw = doc.fileData || doc.data || doc.base64 || null;
+            if (raw) {
+                if (typeof raw === 'string' && raw.startsWith('data:')) {
+                    src = raw;
+                } else if (typeof raw === 'string') {
+                    const cleaned = raw.replace(/\s+/g, '');
+                    const mime = doc.fileType
+                        ? (doc.fileType.startsWith('image/') || doc.fileType.startsWith('application/')
+                            ? doc.fileType
+                            : `image/${doc.fileType}`)
+                        : (doc.fileName && doc.fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+                    src = `data:${mime};base64,${cleaned}`;
+                }
+            }
+
+            // Step 2: Try storageKey via Supabase Storage (if no local data)
             if (!src && doc.storageKey) {
                 const bucket = doc.bucket || 'bridge-documents';
                 try {
                     const { data: signedData, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(doc.storageKey, 60);
                     if (!signedErr && signedData) src = signedData.signedUrl || signedData.signedURL || null;
-                } catch (e) {
-                    // ignore
-                }
+                } catch (e) { /* ignore */ }
                 if (!src) {
-                    const { data, error } = await supabase.storage.from(bucket).getPublicUrl(doc.storageKey);
-                    if (!error && data) src = data.publicUrl || data.publicURL || null;
+                    try {
+                        const { data, error } = await supabase.storage.from(bucket).getPublicUrl(doc.storageKey);
+                        if (!error && data) src = data.publicUrl || data.publicURL || null;
+                    } catch (e) { /* ignore */ }
                 }
             }
 
-            // If still no src, check inline/base64 fields
-            if (!src) {
-                const raw = doc.fileData || doc.data || doc.base64 || null;
-                if (raw) {
-                    if (typeof raw === 'string' && raw.startsWith('data:')) {
-                        src = raw;
-                    } else if (typeof raw === 'string') {
-                        const cleaned = raw.replace(/\s+/g, '');
-                        const mime = doc.fileType || (doc.fileName && doc.fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-                        src = `data:${mime};base64,${cleaned}`;
-                    }
-                }
+            // Step 3: Use direct URL as last resort (may fail if bucket is missing)
+            if (!src && doc.url) {
+                src = doc.url;
             }
 
             if (!src) {
@@ -304,13 +311,21 @@ const PengajuanManagement = () => {
 
     const handleDownloadDocument = async (doc) => {
         try {
-            let url = doc.url || doc.fileData || doc.data || doc.base64 || null;
+            // Step 1: Prefer base64 fileData (no network needed)
+            let url = doc.fileData || doc.data || doc.base64 || null;
+            
+            // Step 2: Try storageKey
             if (!url && doc.storageKey) {
                 const bucket = doc.bucket || 'bridge-documents';
-                const { data, error } = await supabase.storage.from(bucket).createSignedUrl(doc.storageKey, 60);
-                if (error) throw error;
-                url = (data && (data.signedUrl || data.signedURL)) || null;
+                try {
+                    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(doc.storageKey, 60);
+                    if (!error) url = (data && (data.signedUrl || data.signedURL)) || null;
+                } catch (e) { /* ignore */ }
             }
+            
+            // Step 3: Fall back to direct URL
+            if (!url) url = doc.url || null;
+            
             if (!url) throw new Error('No URL available for download');
 
             // If it's a data URI, download directly
@@ -326,6 +341,7 @@ const PengajuanManagement = () => {
 
             // Fetch blob then download
             const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const blob = await res.blob();
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
