@@ -80,7 +80,10 @@ const BarangMasuk = () => {
             unit: item.unit || t.unit || '-',
             quantity: Number(item.quantity) || 0,
             value: Number(item.value) || 0,
-            nominal: item.price || (item.quantity && item.value ? item.value / item.quantity : 0),
+            // nilaiBarang = harga satuan (Nominal per unit dari form item)
+            nilaiBarang: Number(item.price) || (item.quantity && item.value ? Number(item.value) / Number(item.quantity) : 0),
+            // jumlahBarang = Total nilai (qty × price = kolom Total di PackageItemManager)
+            jumlahBarang: Number(item.totalPrice) || (Number(item.quantity) * Number(item.price)) || Number(item.value) || 0,
         }));
     });
 
@@ -145,7 +148,8 @@ const BarangMasuk = () => {
             { header: 'Kode Barang', key: 'itemCode', width: 18 },
             { header: 'Nama Barang (Item)', key: 'itemName', width: 40 },
             { header: 'Satuan', key: 'unit', width: 12 },
-            { header: 'Jumlah Total', key: 'value', width: 15, align: 'right' },
+            { header: 'Nilai Barang', key: 'nilaiBarang', width: 15, align: 'right' },
+            { header: 'Jumlah Barang', key: 'jumlahBarang', width: 16, align: 'right' },
         ];
 
         const data = flatRows.map(r => ({
@@ -338,7 +342,8 @@ const BarangMasuk = () => {
                                 <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Kode Barang</th>
                                 <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Nama Barang (Item)</th>
                                 <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Satuan</th>
-                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Jumlah Total</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Nilai Barang</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Jumlah Barang</th>
                                 <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Dok. Pendukung</th>
                             </tr>
                         </thead>
@@ -373,8 +378,11 @@ const BarangMasuk = () => {
                                         <td className="px-3 py-2.5 text-silver font-mono">{row.itemCode || '-'}</td>
                                         <td className="px-3 py-2.5 text-silver-light max-w-[180px] truncate">{row.itemName}</td>
                                         <td className="px-3 py-2.5 text-center text-silver">{row.unit || '-'}</td>
+                                        <td className="px-3 py-2.5 text-right text-silver font-medium">
+                                            {row.nilaiBarang ? Number(row.nilaiBarang).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
+                                        </td>
                                         <td className="px-3 py-2.5 text-right text-accent-green font-medium">
-                                            {row.value ? Number(row.value).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
+                                            {row.jumlahBarang ? Number(row.jumlahBarang).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
                                             <button
