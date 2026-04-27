@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowDownCircle, Search, Eye, Package, Download, FileSpreadsheet } from 'lucide-react';
+import { ArrowDownCircle, Search, Eye, Package, Download, FileSpreadsheet, FileText, X, ZoomIn } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import Button from '../../../components/Common/Button';
-import { formatCurrency, getCurrencySymbol } from '../../../utils/currencyFormatter';
+import { formatCurrency } from '../../../utils/currencyFormatter';
 import { exportToCSV } from '../../../utils/exportCSV';
 import { exportToXLS } from '../../../utils/exportXLS';
+import DocumentPreviewModal from '../../../components/Common/DocumentPreviewModal';
 
 const BarangMasuk = () => {
     const { inboundTransactions = [], quotations = [], companySettings, bridgeSettings } = useData();
@@ -12,6 +13,10 @@ const BarangMasuk = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedTransaction, setSelectedTransaction] = useState(null);
+    // Document gallery modal state
+    const [docModal, setDocModal] = useState(null); // { title, docs[] }
+    // Document preview state
+    const [previewDoc, setPreviewDoc] = useState(null);
 
     // Helper: lookup quotation by pengajuanNumber to get BL/AWB info
     const getQuotation = (pengajuanNumber) => quotations.find(
@@ -86,6 +91,33 @@ const BarangMasuk = () => {
     // Helper: Calculate Total Qty
     const getTransactionQty = (t) => {
         return (t.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    };
+
+    // Helper: open document gallery modal for a transaction
+    const handleOpenDocModal = (transaction, pengajuanNumber) => {
+        const docs = [
+            ...(transaction.documents || []),
+            ...(transaction.bcSupportingDocuments || [])
+        ];
+        setDocModal({
+            title: `Dok. Pendukung — ${pengajuanNumber || transaction.pengajuanNumber}`,
+            docs
+        });
+    };
+
+    // Helper: resolve doc src with fileData priority
+    const resolveDocSrc = (doc) => {
+        const raw = doc.fileData || doc.data || doc.base64 || null;
+        if (raw) {
+            if (typeof raw === 'string' && raw.startsWith('data:')) return raw;
+            if (typeof raw === 'string') {
+                const mime = doc.fileType
+                    ? (doc.fileType.includes('/') ? doc.fileType : `image/${doc.fileType}`)
+                    : (doc.fileName?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+                return `data:${mime};base64,${raw.replace(/\s+/g, '')}`;
+            }
+        }
+        return doc.url || null;
     };
 
     // Export Main Table to XLS
@@ -308,7 +340,7 @@ const BarangMasuk = () => {
                                 <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Satuan</th>
                                 <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Aksi</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Dok. Pendukung</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
@@ -347,13 +379,24 @@ const BarangMasuk = () => {
                                             {row.value ? Number(row.value).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
-                                            <button
-                                                onClick={() => setSelectedTransaction(row._transaction)}
-                                                className="p-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors"
-                                                title="Lihat Detail"
-                                            >
-                                                <Eye className="w-3.5 h-3.5" />
-                                            </button>
+                                            {(() => {
+                                                const docs = [
+                                                    ...(row._transaction.documents || []),
+                                                    ...(row._transaction.bcSupportingDocuments || [])
+                                                ];
+                                                return docs.length > 0 ? (
+                                                    <button
+                                                        onClick={() => handleOpenDocModal(row._transaction, row.pengajuanNumber)}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors text-xs font-medium"
+                                                        title={`${docs.length} dokumen pendukung`}
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        <span>{docs.length}</span>
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-silver-dark text-xs italic">-</span>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 ))
@@ -508,6 +551,101 @@ const BarangMasuk = () => {
                     </div>
                 </div>
             )}
+
+            {/* ===== STANDALONE DOCUMENT GALLERY MODAL ===== */}
+            {docModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-dark-card rounded-xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-dark-border overflow-hidden">
+                        {/* Header */}
+                        <div className="p-4 border-b border-dark-border flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-accent-blue" />
+                                <h3 className="font-semibold text-silver-light text-sm">{docModal.title}</h3>
+                                <span className="text-xs bg-accent-blue/20 text-accent-blue px-2 py-0.5 rounded-full font-medium">
+                                    {docModal.docs.length} dokumen
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setDocModal(null)}
+                                className="p-1.5 rounded-lg hover:bg-dark-surface text-silver-dark hover:text-white transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Document Grid */}
+                        <div className="flex-1 overflow-y-auto p-5">
+                            {docModal.docs.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-40 gap-3 text-silver-dark">
+                                    <FileText className="w-10 h-10 opacity-30" />
+                                    <p className="text-sm">Tidak ada dokumen pendukung</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                    {docModal.docs.map((doc, idx) => {
+                                        const src = resolveDocSrc(doc);
+                                        const mime = doc.fileType || doc.type || '';
+                                        const isImage = mime.startsWith('image/') ||
+                                            (src && /^data:image\//.test(src)) ||
+                                            /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.fileName || '');
+                                        const ext = (doc.fileName || doc.name || '').split('.').pop().toUpperCase() || 'DOC';
+
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className="group flex flex-col rounded-xl border border-dark-border bg-dark-surface hover:border-accent-blue/50 transition-all overflow-hidden cursor-pointer shadow-sm hover:shadow-accent-blue/10 hover:shadow-lg"
+                                                onClick={() => setPreviewDoc(doc)}
+                                            >
+                                                {/* Thumbnail / Type indicator */}
+                                                <div className="relative h-28 flex items-center justify-center bg-dark-card border-b border-dark-border overflow-hidden">
+                                                    {isImage && src ? (
+                                                        <img
+                                                            src={src}
+                                                            alt={doc.name || doc.fileName}
+                                                            className="object-contain w-full h-full group-hover:scale-105 transition-transform duration-200"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-1.5 text-silver-dark">
+                                                            <div className="w-12 h-12 rounded-lg border-2 border-dark-border flex items-center justify-center bg-dark-surface">
+                                                                <span className="text-xs font-bold text-silver uppercase">{ext.slice(0, 4)}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {/* Overlay on hover */}
+                                                    <div className="absolute inset-0 bg-accent-blue/0 group-hover:bg-accent-blue/10 transition-all flex items-center justify-center">
+                                                        <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
+                                                    </div>
+                                                </div>
+                                                {/* File info */}
+                                                <div className="p-2.5">
+                                                    <p className="text-xs font-medium text-silver-light truncate" title={doc.name || doc.fileName || `Dokumen ${idx + 1}`}>
+                                                        {doc.name || doc.fileName || `Dokumen ${idx + 1}`}
+                                                    </p>
+                                                    <p className="text-[10px] text-silver-dark mt-0.5">
+                                                        {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('id-ID') : '-'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-3 border-t border-dark-border bg-dark-surface/50 flex justify-end">
+                            <Button variant="secondary" onClick={() => setDocModal(null)}>Tutup</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== DOCUMENT PREVIEW MODAL ===== */}
+            <DocumentPreviewModal
+                show={!!previewDoc}
+                doc={previewDoc}
+                onClose={() => setPreviewDoc(null)}
+            />
         </div>
     );
 };
