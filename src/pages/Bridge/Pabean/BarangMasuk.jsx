@@ -143,8 +143,7 @@ const BarangMasuk = () => {
             { header: 'Kode Barang', key: 'itemCode', width: 18 },
             { header: 'Nama Barang (Item)', key: 'itemName', width: 40 },
             { header: 'Satuan', key: 'unit', width: 12 },
-            { header: 'Jumlah', key: 'quantity', width: 10, align: 'center' },
-            { header: 'Nilai', key: 'value', width: 15, align: 'right' },
+            { header: 'Jumlah Total', key: 'value', width: 15, align: 'right' },
         ];
 
         const data = flatRows.map(r => ({
@@ -171,8 +170,7 @@ const BarangMasuk = () => {
             { key: 'itemCode', header: 'Kode Barang' },
             { key: 'itemName', header: 'Nama Barang (Item)' },
             { key: 'unit', header: 'Satuan' },
-            { key: 'quantity', header: 'Jumlah' },
-            { key: 'value', header: 'Nilai' },
+            { key: 'value', header: 'Jumlah Total' },
         ];
 
         const data = flatRows.map(r => ({
@@ -338,8 +336,7 @@ const BarangMasuk = () => {
                                 <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Kode Barang</th>
                                 <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Nama Barang (Item)</th>
                                 <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Satuan</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml</th>
-                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Jumlah Total</th>
                                 <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Dok. Pendukung</th>
                             </tr>
                         </thead>
@@ -374,7 +371,6 @@ const BarangMasuk = () => {
                                         <td className="px-3 py-2.5 text-silver font-mono">{row.itemCode || '-'}</td>
                                         <td className="px-3 py-2.5 text-silver-light max-w-[180px] truncate">{row.itemName}</td>
                                         <td className="px-3 py-2.5 text-center text-silver">{row.unit || '-'}</td>
-                                        <td className="px-3 py-2.5 text-center font-bold text-white">{row.quantity}</td>
                                         <td className="px-3 py-2.5 text-right text-accent-green font-medium">
                                             {row.value ? Number(row.value).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
@@ -385,16 +381,15 @@ const BarangMasuk = () => {
                                                     ...(row._transaction.bcSupportingDocuments || [])
                                                 ];
                                                 return docs.length > 0 ? (
-                                                    <button
+                                                    <span
                                                         onClick={() => handleOpenDocModal(row._transaction, row.pengajuanNumber)}
-                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors text-xs font-medium"
+                                                        className="text-accent-blue hover:text-blue-400 underline cursor-pointer text-xs whitespace-nowrap"
                                                         title={`${docs.length} dokumen pendukung`}
                                                     >
-                                                        <FileText className="w-3.5 h-3.5" />
-                                                        <span>{docs.length}</span>
-                                                    </button>
+                                                        Lihat Dokumen
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-silver-dark text-xs italic">-</span>
+                                                    <span className="text-silver-dark text-xs italic whitespace-nowrap">-</span>
                                                 );
                                             })()}
                                         </td>
