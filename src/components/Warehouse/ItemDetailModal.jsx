@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Package, TrendingUp, TrendingDown, Plus, FileText } from 'lucide-react';
 import Button from '../Common/Button';
 import DocumentUploadManager from '../Common/DocumentUploadManager';
+import { LOCATION_OPTIONS, DEFAULT_LOCATION } from '../../constants/locationOptions';
 
 const ItemDetailModal = ({ item, onClose, onAddMovement }) => {
     const [showAddMovement, setShowAddMovement] = useState(false);
@@ -10,21 +11,14 @@ const ItemDetailModal = ({ item, onClose, onAddMovement }) => {
         time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
         quantity: '',
         movementType: 'out',
-        origin: 'gudang',
-        destination: 'pameran',
+        origin: 'Gudang',
+        destination: DEFAULT_LOCATION,
         condition: item.condition || 'new',
         pic: '',
         notes: '',
         documents: []
     });
-
-    const locationOptions = [
-        { value: 'gudang', label: 'Gudang' },
-        { value: 'pameran', label: 'Pameran' },
-        { value: 'rusak', label: 'Rusak' },
-        { value: 'penjualan', label: 'Penjualan' },
-        { value: 'lainnya', label: 'Lainnya' }
-    ];
+    const locationOptions = LOCATION_OPTIONS;
 
     const handleAddMovement = (e) => {
         e.preventDefault();
@@ -67,8 +61,8 @@ const ItemDetailModal = ({ item, onClose, onAddMovement }) => {
             time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
             quantity: '',
             movementType: 'out',
-            origin: 'gudang',
-            destination: 'pameran',
+            origin: 'Gudang',
+            destination: DEFAULT_LOCATION,
             condition: item.condition || 'new',
             pic: '',
             notes: '',

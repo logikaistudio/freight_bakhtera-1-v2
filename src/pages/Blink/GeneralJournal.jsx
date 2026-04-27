@@ -85,8 +85,6 @@ const GeneralJournal = () => {
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [sourceFilter, setSourceFilter] = useState('all');
-    const [journalTypeFilter, setJournalTypeFilter] = useState('all');
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [dateRange, setDateRange] = useState({
         start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
@@ -465,6 +463,7 @@ const GeneralJournal = () => {
                     <div class="value">Rp ${Math.round(Math.abs(totals.balance)).toLocaleString('id-ID')}</div>
                 </div>
             </div>
+
             <table>
                 <thead>
                     <tr>

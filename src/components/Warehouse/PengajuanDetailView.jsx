@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Package, Edit2, ArrowRightLeft, FileText, Calendar, Clock, User } from 'lucide-react';
 import Button from '../Common/Button';
 import DocumentUploadManager from '../Common/DocumentUploadManager';
+import { LOCATION_OPTIONS, DEFAULT_LOCATION } from '../../constants/locationOptions';
 
 const PengajuanDetailView = ({ pengajuan, onClose, onSubmitMutations, onUpdatePengajuan }) => {
     const [mode, setMode] = useState('view'); // 'view' or 'mutasi'
@@ -23,8 +24,8 @@ const PengajuanDetailView = ({ pengajuan, onClose, onSubmitMutations, onUpdatePe
                 ...prev,
                 [itemId]: {
                     status: 'tetap',
-                    origin: 'gudang',
-                    destination: 'pameran',
+                    origin: 'Gudang',
+                    destination: DEFAULT_LOCATION,
                     quantity: '',
                     date: new Date().toISOString().split('T')[0],
                     time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
@@ -112,14 +113,7 @@ const PengajuanDetailView = ({ pengajuan, onClose, onSubmitMutations, onUpdatePe
         }
     };
 
-    const locationOptions = [
-        { value: 'gudang', label: 'Gudang' },
-        { value: 'pameran', label: 'Pameran' },
-        { value: 'supplier', label: 'Supplier' },
-        { value: 'customer', label: 'Customer' },
-        { value: 'barang_habis_rusak', label: 'Barang Habis/Rusak' },
-        { value: 'lainnya', label: 'Lainnya' }
-    ];
+    const locationOptions = LOCATION_OPTIONS;
 
     const allItems = pengajuan.packages?.flatMap(pkg =>
         pkg.items.map(item => ({ ...item, packageNumber: pkg.packageNumber, packageDescription: pkg.description }))
@@ -364,7 +358,7 @@ const PengajuanDetailView = ({ pengajuan, onClose, onSubmitMutations, onUpdatePe
                                                                         <div>
                                                                             <label className="block text-xs text-silver-dark mb-1">Asal *</label>
                                                                             <select
-                                                                                value={mutationData.origin || 'gudang'}
+                                                                                value={mutationData.origin || 'Gudang'}
                                                                                 onChange={(e) => updateMutation(itemId, 'origin', e.target.value)}
                                                                                 className="w-full px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-silver-light"
                                                                             >
@@ -376,7 +370,7 @@ const PengajuanDetailView = ({ pengajuan, onClose, onSubmitMutations, onUpdatePe
                                                                         <div>
                                                                             <label className="block text-xs text-silver-dark mb-1">Tujuan *</label>
                                                                             <select
-                                                                                value={mutationData.destination || 'pameran'}
+                                                                                value={mutationData.destination || DEFAULT_LOCATION}
                                                                                 onChange={(e) => updateMutation(itemId, 'destination', e.target.value)}
                                                                                 className="w-full px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-silver-light"
                                                                             >

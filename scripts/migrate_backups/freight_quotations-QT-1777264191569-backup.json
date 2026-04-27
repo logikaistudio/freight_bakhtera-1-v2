@@ -1,0 +1,43 @@
+{
+  "id": "QT-1777264191569",
+  "bc_supporting_documents": [],
+  "documents": [
+    {
+      "id": "doc-1777264056788",
+      "name": "PKG-001, BOX-A3",
+      "fileName": "PKG-001, BOX-A3.jpeg",
+      "fileSize": 12116,
+      "fileType": "jpeg",
+      "uploadedAt": "2026-04-27T04:27:36.788Z",
+      "storageKey": "freight_quotations/QT-1777264191569/2f2052bc-9628-4f57-9965-be2ac84fa32a-PKG-001, BOX-A3.jpeg",
+      "bucket": "bridge-documents",
+      "url": "https://nkyoszmtyrpdwfjxggmb.supabase.co/storage/v1/object/public/bridge-documents/freight_quotations/QT-1777264191569/2f2052bc-9628-4f57-9965-be2ac84fa32a-PKG-001,%20BOX-A3.jpeg",
+      "_migrated": true
+    },
+    {
+      "id": "doc-1777264144748",
+      "name": "PKG-001, BOX-A1",
+      "fileName": "PKG-001, BOX-A1.jpeg",
+      "fileSize": 33455,
+      "fileType": "jpeg",
+      "uploadedAt": "2026-04-27T04:29:04.748Z",
+      "storageKey": "freight_quotations/QT-1777264191569/d46944f2-46b8-4864-b514-3e34db54b49e-PKG-001, BOX-A1.jpeg",
+      "bucket": "bridge-documents",
+      "url": "https://nkyoszmtyrpdwfjxggmb.supabase.co/storage/v1/object/public/bridge-documents/freight_quotations/QT-1777264191569/d46944f2-46b8-4864-b514-3e34db54b49e-PKG-001,%20BOX-A1.jpeg",
+      "_migrated": true
+    },
+    {
+      "id": "doc-1777264154215",
+      "name": "PKG-001, BOX-A2",
+      "fileName": "PKG-001,BOX-A2.jpeg",
+      "fileSize": 37692,
+      "fileType": "jpeg",
+      "uploadedAt": "2026-04-27T04:29:14.215Z",
+      "storageKey": "freight_quotations/QT-1777264191569/09fe81dd-1ea0-4844-ab07-9c801c160059-PKG-001,BOX-A2.jpeg",
+      "bucket": "bridge-documents",
+      "url": "https://nkyoszmtyrpdwfjxggmb.supabase.co/storage/v1/object/public/bridge-documents/freight_quotations/QT-1777264191569/09fe81dd-1ea0-4844-ab07-9c801c160059-PKG-001,BOX-A2.jpeg",
+      "_migrated": true
+    }
+  ],
+  "migratedAt": "2026-04-27T08:06:13.230Z"
+}

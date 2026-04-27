@@ -422,6 +422,50 @@ const BarangKeluar = () => {
                             </div>
                         </div>
 
+                        {/* Documents Section */}
+                        <div className="p-5 border-t border-gray-100 dark:border-dark-border">
+                            <h4 className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-silver-light mb-3">
+                                📑 Dokumen Pendukung
+                            </h4>
+                            {[...(selectedTransaction.documents || []), ...(selectedTransaction.bcSupportingDocuments || [])].length === 0 ? (
+                                <p className="text-sm text-gray-500 dark:text-silver-dark">Tidak ada dokumen pendukung.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                    {[...(selectedTransaction.documents || []), ...(selectedTransaction.bcSupportingDocuments || [])].map((doc, idx) => (
+                                        <div key={idx} className="border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface rounded-lg p-3 hover:shadow-md transition-shadow">
+                                            {doc.type && doc.type.startsWith('image/') ? (
+                                                <div className="aspect-video bg-white dark:bg-dark-card rounded mb-2 overflow-hidden flex items-center justify-center border border-gray-100 dark:border-dark-border">
+                                                    <img 
+                                                        src={doc.data || doc.url} 
+                                                        alt={doc.title || doc.name || doc.fileName} 
+                                                        className="object-contain w-full h-full cursor-pointer hover:scale-105 transition-transform"
+                                                        onClick={() => {
+                                                            const win = window.open();
+                                                            win.document.write(`<iframe src="${doc.data || doc.url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="aspect-video bg-white dark:bg-dark-card rounded mb-2 flex flex-col items-center justify-center cursor-pointer border border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-surface/80"
+                                                    onClick={() => {
+                                                        const win = window.open();
+                                                        win.document.write(`<iframe src="${doc.data || doc.url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                                                    }}
+                                                >
+                                                    <div className="w-10 h-10 text-gray-400 dark:text-silver-dark border-2 border-gray-200 dark:border-dark-border rounded-lg flex items-center justify-center mb-1 bg-gray-50 dark:bg-dark-surface">
+                                                        <span className="text-[10px] font-bold uppercase">{doc.type ? doc.type.split('/')[1] : 'PDF'}</span>
+                                                    </div>
+                                                    <span className="text-[10px] text-accent-blue text-center px-2 underline">Buka Dokumen</span>
+                                                </div>
+                                            )}
+                                            <div className="text-sm font-medium text-gray-800 dark:text-silver-light truncate" title={doc.title || doc.name || doc.fileName}>{doc.title || doc.name || doc.fileName || `Dokumen ${idx + 1}`}</div>
+                                            <div className="text-xs text-gray-500 dark:text-silver-dark truncate">Tgl: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('id-ID') : '-'}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Footer */}
                         <div className="p-4 border-t border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-surface/50 flex justify-end">
                             <Button variant="secondary" onClick={() => setSelectedTransaction(null)}>Tutup</Button>

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Activity, Search, Package, ArrowDownCircle, Download, FileSpreadsheet } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import Button from '../../../components/Common/Button';
+import { DEFAULT_LOCATION } from '../../../constants/locationOptions';
 import { exportToCSV } from '../../../utils/exportCSV';
 import { exportToXLS } from '../../../utils/exportXLS';
 
@@ -83,7 +84,7 @@ const PergerakanBarang = () => {
         // 2. From mutationLogs (Secondary - exclude Pameran/Warehouse)
         const secondaryOutbound = mutationLogs.filter(log => {
             const dest = (log.destination || '').toLowerCase();
-            return dest && dest !== 'warehouse' && dest !== 'gudang' && dest !== 'pameran';
+            return dest && dest !== 'warehouse' && dest !== 'gudang' && dest !== DEFAULT_LOCATION.toLowerCase();
         }).map(log => ({
             ...log,
             source: 'mutation_log'

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import DocumentPreviewModal from '../../components/Common/DocumentPreviewModal';
 import { Plus, FileText, CheckCircle, Edit2, Download, Trash2, X, Warehouse, Package, ArrowRight, Save, Box, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import Button from '../../components/Common/Button';
@@ -53,6 +55,8 @@ const PengajuanManagement = () => {
     const [editablePackages, setEditablePackages] = useState([]); // NEW: Temporary packages for editing
     const [showDetailModal, setShowDetailModal] = useState(false); // NEW: Detail modal
     const [selectedPengajuan, setSelectedPengajuan] = useState(null); // NEW: Selected pengajuan for detail
+    const [previewDoc, setPreviewDoc] = useState(null);
+    const [showPreview, setShowPreview] = useState(false);
     const [showSplitViewModal, setShowSplitViewModal] = useState(false); // NEW: Split View Modal for item selection
     const [sourcePackagesForSplitView, setSourcePackagesForSplitView] = useState([]); // Source packages for split view
 
@@ -250,6 +254,89 @@ const PengajuanManagement = () => {
             manualDate: pengajuan.approvedDate || pengajuan.approved_date || new Date().toISOString().split('T')[0]
         });
         setEditModal({ show: true, pengajuan });
+    };
+
+    const handlePreviewDocument = async (doc) => {
+        try {
+            let src = doc.url || null;
+
+            // If not direct URL, try storageKey
+            if (!src && doc.storageKey) {
+                const bucket = doc.bucket || 'bridge-documents';
+                try {
+                    const { data: signedData, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(doc.storageKey, 60);
+                    if (!signedErr && signedData) src = signedData.signedUrl || signedData.signedURL || null;
+                } catch (e) {
+                    // ignore
+                }
+                if (!src) {
+                    const { data, error } = await supabase.storage.from(bucket).getPublicUrl(doc.storageKey);
+                    if (!error && data) src = data.publicUrl || data.publicURL || null;
+                }
+            }
+
+            // If still no src, check inline/base64 fields
+            if (!src) {
+                const raw = doc.fileData || doc.data || doc.base64 || null;
+                if (raw) {
+                    if (typeof raw === 'string' && raw.startsWith('data:')) {
+                        src = raw;
+                    } else if (typeof raw === 'string') {
+                        const cleaned = raw.replace(/\s+/g, '');
+                        const mime = doc.fileType || (doc.fileName && doc.fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+                        src = `data:${mime};base64,${cleaned}`;
+                    }
+                }
+            }
+
+            if (!src) {
+                alert('Tidak ada sumber dokumen untuk preview');
+                return;
+            }
+
+            setPreviewDoc({ ...doc, url: src });
+            setShowPreview(true);
+        } catch (err) {
+            console.error('Preview error', err);
+            alert('Gagal menyiapkan preview dokumen: ' + (err.message || err));
+        }
+    };
+
+    const handleDownloadDocument = async (doc) => {
+        try {
+            let url = doc.url || doc.fileData || doc.data || doc.base64 || null;
+            if (!url && doc.storageKey) {
+                const bucket = doc.bucket || 'bridge-documents';
+                const { data, error } = await supabase.storage.from(bucket).createSignedUrl(doc.storageKey, 60);
+                if (error) throw error;
+                url = (data && (data.signedUrl || data.signedURL)) || null;
+            }
+            if (!url) throw new Error('No URL available for download');
+
+            // If it's a data URI, download directly
+            if (url.startsWith('data:')) {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = doc.name || doc.fileName || 'dokumen';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                return;
+            }
+
+            // Fetch blob then download
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = doc.name || doc.fileName || 'dokumen';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('Download error', err);
+            alert('Gagal mengunduh dokumen: ' + err.message);
+        }
     };
 
     const handleSaveEdit = async () => {
@@ -450,15 +537,16 @@ const PengajuanManagement = () => {
 
         const normalize = (str) => (str || '').toLowerCase().trim();
 
-        // Helper: Get stok di pameran for an item
+        const { isExhibitionLocation } = useData();
+
+        // Helper: Get stok di exhibition (Halls) for an item
         const getPameranStock = (itemCode, packageNumber) => {
             // Mutations TO pameran (from warehouse to pameran/other)
             const toMutations = mutationLogs.filter(m =>
                 normalize(m.pengajuanNumber) === normalize(pengajuanNumber) &&
                 normalize(m.itemCode) === normalize(itemCode) &&
                 (packageNumber ? normalize(m.packageNumber) === normalize(packageNumber) : true) &&
-                normalize(m.destination) !== 'warehouse' &&
-                normalize(m.destination) !== 'gudang'
+                (m.destination || '') && (isExhibitionLocation ? isExhibitionLocation(m.destination) : ((m.destination || '').toLowerCase() !== 'warehouse' && (m.destination || '').toLowerCase() !== 'gudang'))
             );
 
             // Mutations BACK to warehouse (return from pameran)
@@ -594,8 +682,7 @@ const PengajuanManagement = () => {
             (m.pengajuanId === pengajuanId || normalize(m.pengajuanNumber) === normalize(pengajuanNumber)) &&
             normalize(m.itemCode) === normalize(itemCode) &&
             (packageNumber ? normalize(m.packageNumber) === normalize(packageNumber) : true) &&
-            (m.destination || '').toLowerCase() !== 'warehouse' &&
-            (m.destination || '').toLowerCase() !== 'gudang'
+            (m.destination || '') && (isExhibitionLocation ? isExhibitionLocation(m.destination) : ((m.destination || '').toLowerCase() !== 'warehouse' && (m.destination || '').toLowerCase() !== 'gudang'))
         );
 
         // Find all return mutations for this specific item
@@ -1340,7 +1427,10 @@ const PengajuanManagement = () => {
                                             return (
                                                 <tr
                                                     key={quot.id}
-                                                    onClick={() => handleEditPengajuan(quot)}
+                                                    onClick={() => {
+                                                        setSelectedPengajuan(quot);
+                                                        setShowDetailModal(true);
+                                                    }}
                                                     className="hover:bg-dark-surface smooth-transition cursor-pointer"
                                                 >
                                                     <td className="px-4 py-2 text-sm text-silver-light font-medium whitespace-nowrap">
@@ -1433,7 +1523,10 @@ const PengajuanManagement = () => {
                                             return (
                                                 <tr
                                                     key={quot.id}
-                                                    onClick={() => handleEditPengajuan(quot)}
+                                                    onClick={() => {
+                                                        setSelectedPengajuan(quot);
+                                                        setShowDetailModal(true);
+                                                    }}
                                                     className="hover:bg-dark-surface smooth-transition cursor-pointer"
                                                 >
                                                     <td className="px-4 py-2 text-sm text-silver-light font-medium whitespace-nowrap">
@@ -1500,6 +1593,215 @@ const PengajuanManagement = () => {
                     </div>
                 )
             }
+
+            {/* Detail Pengajuan Modal - NEW */}
+            {showDetailModal && selectedPengajuan && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+                    <div className="glass-card rounded-lg max-w-4xl w-full max-h-[85vh] overflow-hidden">
+                        {/* Header */}
+                        <div className="flex justify-between items-center p-4 border-b border-dark-border bg-accent-purple/10">
+                            <div>
+                                <h2 className="text-xl font-bold text-silver-light flex items-center gap-2">
+                                    <FileText className="w-5 h-5" />
+                                    Detail Pengajuan
+                                </h2>
+                                <p className="text-sm text-silver-dark mt-1">
+                                    {selectedPengajuan.quotationNumber || selectedPengajuan.quotation_number}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowDetailModal(false)}
+                                className="text-silver-dark hover:text-silver p-1"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Body - Scrollable */}
+                        <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                            {/* Info Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">No. Pengajuan</label>
+                                    <p className="text-sm text-silver mt-1 font-semibold">
+                                        {selectedPengajuan.quotationNumber || selectedPengajuan.quotation_number}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">Tanggal Pengajuan</label>
+                                    <p className="text-sm text-silver mt-1">
+                                        {new Date(selectedPengajuan.submissionDate || selectedPengajuan.submission_date).toLocaleDateString('id-ID')}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">Pemilik Barang</label>
+                                    <p className="text-sm text-silver mt-1">{selectedPengajuan.customer}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">Shipper</label>
+                                    <p className="text-sm text-silver mt-1">{selectedPengajuan.shipper || '-'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">Jenis Dokumen BC</label>
+                                    <p className="text-sm text-silver mt-1">{selectedPengajuan.bcDocType || selectedPengajuan.bc_document_type || '-'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">No. Dokumen Pabean</label>
+                                    <p className="text-sm text-accent-purple mt-1 font-semibold">
+                                        {selectedPengajuan.bcDocumentNumber || selectedPengajuan.bc_document_number || '-'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">Tujuan</label>
+                                    <p className="text-sm text-silver mt-1">{selectedPengajuan.destination || '-'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-silver-dark font-medium">Status Dokumen</label>
+                                    <p className="text-sm mt-1">
+                                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                                            (selectedPengajuan.documentStatus || selectedPengajuan.document_status) === 'approved'
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : (selectedPengajuan.documentStatus || selectedPengajuan.document_status) === 'rejected'
+                                                ? 'bg-red-500/20 text-red-400'
+                                                : 'bg-yellow-500/20 text-yellow-400'
+                                        }`}>
+                                            {(selectedPengajuan.documentStatus || selectedPengajuan.document_status) === 'approved' ? 'Approved' :
+                                                (selectedPengajuan.documentStatus || selectedPengajuan.document_status) === 'rejected' ? 'Rejected' : 'Pengajuan'}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Dokumen Pendukung Section */}
+                            <div>
+                                <h3 className="text-lg font-bold text-silver mb-3">📑 Dokumen Pendukung</h3>
+                                {[...(selectedPengajuan.documents || []), ...(selectedPengajuan.bcSupportingDocuments || [])].length === 0 ? (
+                                    <p className="text-silver-dark text-sm">Tidak ada dokumen.</p>
+                                ) : (
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr>
+                                                <th className="text-left">Nama</th>
+                                                <th className="text-left">Tanggal</th>
+                                                <th className="text-left">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {[...(selectedPengajuan.documents || []), ...(selectedPengajuan.bcSupportingDocuments || [])].map((doc, idx) => (
+                                                <tr key={idx}>
+                                                    <td className="text-left">{doc.name || doc.fileName}</td>
+                                                    <td className="text-left">{doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('id-ID') : '-'}</td>
+                                                    <td className="text-left">
+                                                        <div className="flex items-center gap-2">
+                                                            <Button size="xs" onClick={() => handlePreviewDocument(doc)}>Preview</Button>
+                                                            <Button size="xs" variant="secondary" onClick={() => handleDownloadDocument(doc)}>Download</Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+
+                            {/* Packages Section */}
+                            <div>
+                                <h3 className="text-lg font-bold text-silver mb-3">📦 Detail Barang</h3>
+                                <div className="space-y-3">
+                                    {(selectedPengajuan.packages || []).map((pkg, pkgIdx) => (
+                                        <div key={pkgIdx} className="glass-card p-3 rounded-lg border border-dark-border">
+                                            <div className="font-semibold text-silver mb-2 text-sm">
+                                                Package: {pkg.packageNumber}
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs">
+                                                    <thead className="bg-dark-surface">
+                                                        <tr>
+                                                            <th className="px-2 py-1 text-left text-xs font-bold text-silver">Kode</th>
+                                                            <th className="px-2 py-1 text-left text-xs font-bold text-silver">Nama Item</th>
+                                                            <th className="px-2 py-1 text-center text-xs font-bold text-silver">Qty</th>
+                                                            <th className="px-2 py-1 text-center text-xs font-bold text-silver">Unit</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(pkg.items || []).map((item, itemIdx) => (
+                                                            <tr key={itemIdx} className="border-t border-dark-border">
+                                                                <td className="px-2 py-1 text-xs font-mono text-silver">{item.itemCode}</td>
+                                                                <td className="px-2 py-1 text-xs text-silver">{item.name || item.itemName}</td>
+                                                                <td className="px-2 py-1 text-xs text-center text-silver font-bold">{item.quantity}</td>
+                                                                <td className="px-2 py-1 text-xs text-center text-silver">{item.uom || 'pcs'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Summary */}
+                            <div className="glass-card p-4 bg-accent-purple/10 border-2 border-accent-purple rounded-lg">
+                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-xs text-silver-dark">Total Package</p>
+                                        <p className="text-lg font-bold text-accent-purple">
+                                            {selectedPengajuan.packages?.length || 0}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-silver-dark">Total Item</p>
+                                        <p className="text-lg font-bold text-accent-purple">
+                                            {selectedPengajuan.packages?.reduce((sum, pkg) => sum + (pkg.items?.length || 0), 0) || 0}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-silver-dark">Total Quantity</p>
+                                        <p className="text-lg font-bold text-accent-purple">
+                                            {selectedPengajuan.packages?.reduce((sum, pkg) => 
+                                                sum + pkg.items?.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0), 0
+                                            ) || 0}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer - Action Buttons */}
+                        <div className="flex justify-between items-center gap-3 p-4 border-t border-dark-border bg-dark-surface">
+                            <Button 
+                                variant="secondary" 
+                                onClick={() => setShowDetailModal(false)}
+                            >
+                                Tutup
+                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="secondary"
+                                    icon={Trash2}
+                                    onClick={() => {  
+                                        setDeleteConfirmModal({ show: true, pengajuanId: selectedPengajuan.id });
+                                        setShowDetailModal(false);
+                                    }}
+                                    className="hover:bg-red-500/20 hover:text-red-400"
+                                >
+                                    Hapus
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    icon={Edit2}
+                                    onClick={() => {
+                                        handleEditPengajuan(selectedPengajuan);
+                                        setShowDetailModal(false);
+                                    }}
+                                >
+                                    Edit
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Edit Pengajuan Modal */}
             {
@@ -1727,18 +2029,23 @@ const PengajuanManagement = () => {
                                     {editModal.pengajuan.type === 'outbound' &&
                                         (editModal.pengajuan.documentStatus || editModal.pengajuan.document_status) === 'approved' &&
                                         (editModal.pengajuan.outboundStatus !== 'processed') && (
-                                            <Button
-                                                variant="primary"
-                                                onClick={() => {
-                                                    // Navigate to OutboundInventory to confirm item exit
-                                                    navigate('/bridge/outbound-inventory');
-                                                    setEditModal({ show: false, pengajuan: null });
-                                                }}
-                                                icon={Package}
-                                                className="bg-accent-orange hover:bg-accent-orange/80"
-                                            >
-                                                Proses Barang Keluar
-                                            </Button>
+                                                <Button
+                                                    variant="primary"
+                                                    onClick={() => {
+                                                        const status = (editModal.pengajuan.documentStatus || editModal.pengajuan.document_status);
+                                                        if (status !== 'approved') {
+                                                            alert('Proses outbound hanya dapat dilakukan jika pengajuan berstatus APPROVED');
+                                                            return;
+                                                        }
+                                                        // Navigate to OutboundInventory to confirm item exit
+                                                        navigate('/bridge/outbound-inventory');
+                                                        setEditModal({ show: false, pengajuan: null });
+                                                    }}
+                                                    icon={Package}
+                                                    className="bg-accent-orange hover:bg-accent-orange/80"
+                                                >
+                                                    Proses Barang Keluar
+                                                </Button>
                                         )}
 
                                     <div className="flex gap-3 mt-4 sm:mt-0 sm:ml-auto">
@@ -1781,6 +2088,11 @@ const PengajuanManagement = () => {
                     </div>
                 )
             }
+
+            {/* Document Preview Modal */}
+            {showPreview && previewDoc && (
+                <DocumentPreviewModal show={showPreview} doc={previewDoc} onClose={() => setShowPreview(false)} />
+            )}
 
             {/* Warehouse Selector Modal for Outbound */}
             {showWarehouseSelector && (
