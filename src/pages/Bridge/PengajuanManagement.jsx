@@ -59,6 +59,7 @@ const PengajuanManagement = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [showSplitViewModal, setShowSplitViewModal] = useState(false); // NEW: Split View Modal for item selection
     const [sourcePackagesForSplitView, setSourcePackagesForSplitView] = useState([]); // Source packages for split view
+    const [isViewOnly, setIsViewOnly] = useState(false); // NEW: View only mode for form
 
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -225,14 +226,16 @@ const PengajuanManagement = () => {
         setConfirmDialog({ show: false, quotationId: null });
     };
 
-    const handleFullEdit = (p) => {
-        if (!hasEdit) return;
+    const handleFullEdit = (p, forceViewOnly = false) => {
+        if (!hasEdit && !forceViewOnly) return;
         // Prevent editing if document is approved
         const docStatus = p.documentStatus || p.document_status || 'pengajuan';
-        if (docStatus === 'approved') {
+        if (docStatus === 'approved' && !forceViewOnly) {
             alert('❌ Dokumen yang sudah approved tidak dapat diedit!\n\nAnda hanya dapat menghapus dokumen ini jika perlu.');
             return;
         }
+
+        setIsViewOnly(forceViewOnly || (docStatus === 'approved'));
 
         setFormData({
             id: p.id,
@@ -960,7 +963,13 @@ const PengajuanManagement = () => {
                     <p className="text-silver-dark mt-1">Pengajuan Layanan TPPB & Tracking Status Bea Cukai</p>
                 </div>
                 {hasCreate && (
-                    <Button onClick={() => setShowForm(!showForm)} icon={Plus}>
+                    <Button 
+                        onClick={() => {
+                            setIsViewOnly(false);
+                            setShowForm(!showForm);
+                        }} 
+                        icon={Plus}
+                    >
                         {showForm ? 'Batal' : 'Buat Pengajuan Baru'}
                     </Button>
                 )}
@@ -1408,11 +1417,13 @@ const PengajuanManagement = () => {
 
                     <div className="flex justify-end gap-3">
                         <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
-                            Batal
+                            {isViewOnly ? 'Tutup' : 'Batal'}
                         </Button>
-                        <Button type="submit" icon={Plus}>
-                            Buat Pengajuan
-                        </Button>
+                        {!isViewOnly && (
+                            <Button type="submit" icon={formData.id ? Save : Plus}>
+                                {formData.id ? 'Simpan Perubahan' : 'Buat Pengajuan'}
+                            </Button>
+                        )}
                     </div>
                 </form>
             )}
@@ -1822,6 +1833,16 @@ const PengajuanManagement = () => {
                             <div className="flex gap-2">
                                 <Button
                                     variant="secondary"
+                                    icon={FileText}
+                                    onClick={() => {
+                                        handleFullEdit(selectedPengajuan, true);
+                                        handleCloseDetailModal();
+                                    }}
+                                >
+                                    Lihat Form
+                                </Button>
+                                <Button
+                                    variant="secondary"
                                     icon={Trash2}
                                     onClick={() => {  
                                         setDeleteConfirmModal({ show: true, pengajuanId: selectedPengajuan.id });
@@ -1839,7 +1860,7 @@ const PengajuanManagement = () => {
                                         handleCloseDetailModal();
                                     }}
                                 >
-                                    Edit
+                                    Edit Status
                                 </Button>
                             </div>
                         </div>

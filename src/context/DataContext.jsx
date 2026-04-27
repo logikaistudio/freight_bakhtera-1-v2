@@ -1941,6 +1941,8 @@ export const DataProvider = ({ children }) => {
             bc_document_date: quotation.bcDocumentDate || null,
             bc_document_type: quotation.bcDocType || quotation.bcDocumentType || null,
             title: quotation.title || null,
+            bl_number: quotation.blNumber || null,
+            bl_date: quotation.blDate || null,
 
             // Dates
             date: quotation.date || new Date().toISOString().split('T')[0],
@@ -2354,6 +2356,8 @@ export const DataProvider = ({ children }) => {
         if (updatedData.notes !== undefined) dbUpdateData.notes = updatedData.notes;
         if (updatedData.pic !== undefined) dbUpdateData.pic = updatedData.pic;
         if (updatedData.status !== undefined) dbUpdateData.status = updatedData.status;
+        if (updatedData.blNumber !== undefined) dbUpdateData.bl_number = updatedData.blNumber;
+        if (updatedData.blDate !== undefined) dbUpdateData.bl_date = updatedData.blDate || null;
         // Source References
         if (updatedData.sourcePengajuanId !== undefined) dbUpdateData.source_pengajuan_id = updatedData.sourcePengajuanId;
         if (updatedData.sourcePengajuanNumber !== undefined) dbUpdateData.source_pengajuan_number = updatedData.sourcePengajuanNumber;
