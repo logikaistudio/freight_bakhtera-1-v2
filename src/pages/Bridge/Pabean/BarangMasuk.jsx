@@ -82,8 +82,8 @@ const BarangMasuk = () => {
             value: Number(item.value) || 0,
             // nilaiBarang = harga satuan (Nominal per unit dari form item)
             nilaiBarang: Number(item.price) || (item.quantity && item.value ? Number(item.value) / Number(item.quantity) : 0),
-            // jumlahBarang = Total nilai (qty × price = kolom Total di PackageItemManager)
-            jumlahBarang: Number(item.totalPrice) || (Number(item.quantity) * Number(item.price)) || Number(item.value) || 0,
+            // jumlahBarang = JML = jumlah/qty item (kolom JML di PackageItemManager)
+            jumlahBarang: Number(item.quantity) || 0,
         }));
     });
 
@@ -302,13 +302,13 @@ const BarangMasuk = () => {
                 <div className="glass-card p-4 rounded-lg border border-orange-500">
                     <p className="text-xs text-silver-dark">Barang Masuk</p>
                     <p className="text-2xl font-bold text-orange-500">
-                        {flatRows.length}
+                        {flatRows.reduce((sum, r) => sum + (r.jumlahBarang || 0), 0).toLocaleString('id-ID')}
                     </p>
                 </div>
                 <div className="glass-card p-4 rounded-lg border border-accent-green">
                     <p className="text-xs text-silver-dark">Jumlah Total</p>
                     <p className="text-xl font-bold text-accent-green">
-                        {formatCurrency(filteredTransactions.reduce((sum, t) => sum + getTransactionTotal(t), 0))}
+                        {formatCurrency(flatRows.reduce((sum, r) => sum + (r.nilaiBarang || 0), 0))}
                     </p>
                 </div>
             </div>
