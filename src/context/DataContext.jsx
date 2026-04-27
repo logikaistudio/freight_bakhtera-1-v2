@@ -160,6 +160,9 @@ export const DataProvider = ({ children }) => {
         bcSupportingDocuments: q.bc_supporting_documents || [],
         validUntil: q.valid_until,
         itemCode: q.item_code,
+        // BL / AWB fields
+        blNumber: q.bl_number || null,
+        blDate: q.bl_date || null,
         // Pricing & Services fields
         services: q.services || null,
         customCosts: q.custom_costs || null,
