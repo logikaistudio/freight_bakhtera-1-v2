@@ -55,15 +55,17 @@ const BarangMasuk = () => {
 
         const xlsColumns = [
             { header: 'No', key: 'no', width: 5, align: 'center' },
+            { header: 'No. Bukti Penerimaan', key: 'receiptNumber', width: 22 },
+            { header: 'Tgl Bukti Penerimaan', key: 'receiptDateStr', width: 18, align: 'center' },
             { header: 'No. Pengajuan', key: 'pengajuanNumber', width: 20 },
             { header: 'Jenis Dok', key: 'customsDocType', width: 10, align: 'center' },
             { header: 'No. Pabean', key: 'customsDocNumber', width: 20 },
-            { header: 'Tgl Dokumen', key: 'customsDocDate', width: 12, align: 'center' },
+            { header: 'Tgl Dokumen Pabean', key: 'customsDocDate', width: 16, align: 'center' },
+            { header: 'Nama Pemilik', key: 'ownerName', width: 28 },
             { header: 'Pengirim', key: 'sender', width: 25 },
-            { header: 'Uraian Barang (Item)', key: 'itemSummary', width: 40 },
-            { header: 'Nominal Satuan', key: 'itemNominalSummary', width: 20 },
-            { header: 'Kurs Pengajuan', key: 'kurs', width: 12, align: 'right' },
-            { header: 'Mata Uang', key: 'currency', width: 8, align: 'center' },
+            { header: 'Kode Barang', key: 'itemCodeSummary', width: 18 },
+            { header: 'Nama Barang (Item)', key: 'itemSummary', width: 40 },
+            { header: 'Satuan', key: 'unitSummary', width: 12 },
             { header: 'Jml Item', key: 'itemCount', width: 10, align: 'center' },
             { header: 'Total Nilai', key: 'totalValue', width: 15, align: 'right' }
         ];
@@ -71,11 +73,13 @@ const BarangMasuk = () => {
         const data = filteredTransactions.map((t, idx) => ({
             ...t,
             no: idx + 1,
+            receiptDateStr: t.receiptDate ? new Date(t.receiptDate).toLocaleDateString('id-ID') : (t.date ? new Date(t.date).toLocaleDateString('id-ID') : '-'),
             customsDocDate: t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-',
-            itemSummary: (t.items || []).map(i => i.assetName || i.goodsType || i.itemName || '-').join('; ') || '-',
-            itemNominalSummary: (t.items || []).map(i => formatCurrency(i.price || (i.quantity ? i.value / i.quantity : 0))).join('; ') || '-',
-            itemCount: t.items ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0,
-            kurs: t.kurs ? Number(t.kurs).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-',
+            ownerName: t.customer || t.sender || '-',
+            itemCodeSummary: (t.items || []).map(i => i.itemCode || '-').join('; ') || (t.itemCode || '-'),
+            itemSummary: (t.items || []).map(i => i.assetName || i.goodsType || i.itemName || '-').join('; ') || (t.assetName || '-'),
+            unitSummary: (t.items || []).map(i => i.unit || '-').join('; ') || (t.unit || '-'),
+            itemCount: t.items ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : (Number(t.quantity) || 0),
             currency: t.invoiceCurrency || t.currency || 'IDR',
             totalValue: formatCurrency(getTransactionTotal(t))
         }));
@@ -252,87 +256,101 @@ const BarangMasuk = () => {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full text-xs">
                         <thead className="bg-accent-blue/10">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pengajuan</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Jenis Dok</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pabean</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Dok</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Pengirim</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Uraian Barang (Item)</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Kurs</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml Item</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Nominal</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider w-10">No</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Bukti Penerimaan</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Bukti Penerimaan</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Nama Pemilik</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pengajuan</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Jenis Dok</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pabean</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Pabean</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Pengirim</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Kode Barang</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Nama Barang (Item)</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Satuan</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Jml</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Total Nilai</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
                             {filteredTransactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan="10" className="px-4 py-12 text-center text-silver-dark">
+                                    <td colSpan="15" className="px-4 py-12 text-center text-silver-dark">
                                         Tidak ada data yang ditemukan
                                     </td>
                                 </tr>
                             ) : (
-                                filteredTransactions.map((t, idx) => (
-                                    <tr key={idx} className="hover:bg-dark-surface/50 transition-colors">
-                                        <td className="px-4 py-3 text-sm text-accent-blue font-medium">{t.pengajuanNumber || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-silver">{t.customsDocType || 'BC 2.3'}</td>
-                                        <td className="px-4 py-3 text-sm text-silver font-mono">{t.customsDocNumber || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-silver text-center">
-                                            {t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-'}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-silver">{t.sender || t.supplier || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-silver max-w-[280px]">
-                                            {(t.items && t.items.length > 0) ? (
+                                filteredTransactions.map((t, idx) => {
+                                    const itemCodes = (t.items && t.items.length > 0)
+                                        ? [...new Set(t.items.map(i => i.itemCode || t.itemCode).filter(Boolean))]
+                                        : [t.itemCode].filter(Boolean);
+                                    const itemNames = (t.items && t.items.length > 0)
+                                        ? t.items.map(i => i.assetName || i.goodsType || i.itemName || t.assetName || '-')
+                                        : [t.assetName || '-'];
+                                    const itemUnits = (t.items && t.items.length > 0)
+                                        ? [...new Set(t.items.map(i => i.unit || t.unit).filter(Boolean))]
+                                        : [t.unit].filter(Boolean);
+                                    const totalQty = t.items
+                                        ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0)
+                                        : (Number(t.quantity) || 0);
+                                    const ownerName = t.customer || t.sender || '-';
+                                    const receiptDateStr = t.receiptDate || t.date;
+
+                                    return (
+                                        <tr key={idx} className="hover:bg-dark-surface/50 transition-colors">
+                                            <td className="px-3 py-2.5 text-center text-silver-dark">{idx + 1}</td>
+                                            <td className="px-3 py-2.5 text-accent-blue font-mono font-medium">{t.receiptNumber || t.pengajuanNumber || '-'}</td>
+                                            <td className="px-3 py-2.5 text-center text-silver">
+                                                {receiptDateStr ? new Date(receiptDateStr).toLocaleDateString('id-ID') : '-'}
+                                            </td>
+                                            <td className="px-3 py-2.5 text-silver font-medium">{ownerName}</td>
+                                            <td className="px-3 py-2.5 text-silver-dark font-mono">{t.pengajuanNumber || '-'}</td>
+                                            <td className="px-3 py-2.5 text-silver">{t.customsDocType || 'BC 2.3'}</td>
+                                            <td className="px-3 py-2.5 text-silver font-mono">{t.customsDocNumber || '-'}</td>
+                                            <td className="px-3 py-2.5 text-center text-silver">
+                                                {t.customsDocDate ? new Date(t.customsDocDate).toLocaleDateString('id-ID') : '-'}
+                                            </td>
+                                            <td className="px-3 py-2.5 text-silver">{t.sender || '-'}</td>
+                                            <td className="px-3 py-2.5 text-silver font-mono">
+                                                {itemCodes.length > 0 ? (
+                                                    <div className="space-y-0.5">
+                                                        {itemCodes.slice(0, 2).map((c, i) => <div key={i} className="truncate max-w-[100px]">{c}</div>)}
+                                                        {itemCodes.length > 2 && <div className="text-accent-blue/70 italic">+{itemCodes.length - 2}</div>}
+                                                    </div>
+                                                ) : '-'}
+                                            </td>
+                                            <td className="px-3 py-2.5 text-silver max-w-[180px]">
                                                 <div className="space-y-0.5">
-                                                    {t.items.slice(0, 3).map((item, i) => (
-                                                        <div key={i} className="flex items-center gap-1.5 text-xs h-4">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-accent-blue/60 flex-shrink-0"></span>
-                                                            <span className="truncate">{item.assetName || item.goodsType || item.itemName || '-'}</span>
+                                                    {itemNames.slice(0, 3).map((name, i) => (
+                                                        <div key={i} className="flex items-center gap-1 truncate">
+                                                            <span className="w-1 h-1 rounded-full bg-accent-blue/60 flex-shrink-0"></span>
+                                                            <span className="truncate">{name}</span>
                                                         </div>
                                                     ))}
-                                                    {t.items.length > 3 && (
-                                                        <div className="flex items-center h-4">
-                                                            <span className="text-xs text-accent-blue/70 italic">+{t.items.length - 3} item lainnya</span>
-                                                        </div>
-                                                    )}
+                                                    {itemNames.length > 3 && <span className="text-accent-blue/70 italic">+{itemNames.length - 3} lainnya</span>}
                                                 </div>
-                                            ) : (
-                                                <span className="text-silver-dark text-xs italic">Tidak ada item</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-silver text-center font-medium">
-                                            {t.invoiceCurrency || t.currency || 'IDR'}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-silver text-center font-bold">
-                                            {t.items ? t.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-silver text-right">
-                                            {(t.items && t.items.length > 0) ? (
-                                                <div className="space-y-0.5">
-                                                    {t.items.slice(0, 3).map((item, i) => {
-                                                        const nominal = item.price || (item.quantity ? item.value / item.quantity : 0);
-                                                        return (
-                                                            <div key={i} className="flex items-center justify-end text-xs h-4">
-                                                                <span>{formatCurrency(nominal)}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {t.items.length > 3 && (
-                                                        <div className="flex items-center justify-end h-4">
-                                                            <span className="text-xs italic opacity-0">-</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : '-'}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-accent-green text-right font-medium">
-                                            {getTransactionTotal(t) ? Number(getTransactionTotal(t)).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-3 py-2.5 text-center text-silver">{itemUnits.join(', ') || '-'}</td>
+                                            <td className="px-3 py-2.5 text-center font-bold text-white">{totalQty}</td>
+                                            <td className="px-3 py-2.5 text-right text-accent-green font-medium">
+                                                {getTransactionTotal(t) ? Number(getTransactionTotal(t)).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
+                                            </td>
+                                            <td className="px-3 py-2.5 text-center">
+                                                <button
+                                                    onClick={() => setSelectedTransaction(t)}
+                                                    className="p-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors"
+                                                    title="Lihat Detail"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>

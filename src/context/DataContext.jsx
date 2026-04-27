@@ -197,6 +197,7 @@ export const DataProvider = ({ children }) => {
             customsDocDate: i.customs_doc_date,
             customsDocType: i.customs_doc_type,
             receiptNumber: i.receipt_number,
+            receiptDate: i.date, // date column = tanggal bukti penerimaan
             itemCode: i.item_code,
             hsCode: i.hs_code,
             serialNumber: i.serial_number,
@@ -205,9 +206,12 @@ export const DataProvider = ({ children }) => {
             unit: i.unit,
             value: i.value,
             sender: i.sender,
+            customer: i.customer || parsedDocs.customer || null, // pemilik barang
             assetName: i.asset_name,
             createdAt: i.created_at,
             date: i.date,
+            pic: i.pic,
+            receivedBy: i.received_by,
             // Exchange rate from pengajuan
             kurs: i.kurs || parsedDocs.kurs,
             kursPengajuanId: i.kurs_pengajuan_id || parsedDocs.kursPengajuanId,
@@ -223,6 +227,7 @@ export const DataProvider = ({ children }) => {
             originalDocuments: i.documents
         };
     };
+
 
     // Shared Helper: Map Outbound DB -> State (freight_outbound schema)
     const mapOutboundToState = (o) => {
