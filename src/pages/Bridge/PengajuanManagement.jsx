@@ -231,11 +231,11 @@ const PengajuanManagement = () => {
         // Prevent editing if document is approved
         const docStatus = p.documentStatus || p.document_status || 'pengajuan';
         if (docStatus === 'approved' && !forceViewOnly) {
-            alert('❌ Dokumen yang sudah approved tidak dapat diedit!\n\nAnda hanya dapat menghapus dokumen ini jika perlu.');
-            return;
+            const confirmed = window.confirm('⚠️ PERHATIAN:\nDokumen ini sudah berstatus Approved.\nApakah Anda yakin ingin mengedit data formulir ini?');
+            if (!confirmed) return;
         }
 
-        setIsViewOnly(forceViewOnly || (docStatus === 'approved'));
+        setIsViewOnly(forceViewOnly);
 
         setFormData({
             id: p.id,
@@ -1835,11 +1835,11 @@ const PengajuanManagement = () => {
                                     variant="secondary"
                                     icon={FileText}
                                     onClick={() => {
-                                        handleFullEdit(selectedPengajuan, true);
+                                        handleFullEdit(selectedPengajuan, false);
                                         handleCloseDetailModal();
                                     }}
                                 >
-                                    Lihat Form
+                                    Edit Form
                                 </Button>
                                 <Button
                                     variant="secondary"
