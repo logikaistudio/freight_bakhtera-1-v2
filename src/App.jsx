@@ -213,7 +213,6 @@ function App() {
                     <Route path="/bridge/pabean" element={<ProtectedRoute menuCode="bridge_pabean"><PabeanDashboard /></ProtectedRoute>} />
                     <Route path="/bridge/pabean/barang-masuk" element={<ProtectedRoute menuCode="bridge_barang_masuk"><BarangMasuk /></ProtectedRoute>} />
                     <Route path="/bridge/pabean/barang-keluar" element={<ProtectedRoute menuCode="bridge_barang_keluar"><BarangKeluar /></ProtectedRoute>} />
-                    <Route path="/bridge/pabean/barang-reject" element={<ProtectedRoute menuCode="bridge_barang_reject"><BarangReject /></ProtectedRoute>} />
                     <Route path="/bridge/pabean/pergerakan" element={<ProtectedRoute menuCode="bridge_pabean_movement"><PergerakanBarang /></ProtectedRoute>} />
 
                     {/* Admin Module - Super Admin Only */}

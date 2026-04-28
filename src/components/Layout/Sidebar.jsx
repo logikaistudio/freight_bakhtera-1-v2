@@ -200,7 +200,6 @@ const Sidebar = () => {
         { path: '/bridge/pabean', label: 'Dashboard Pabean', menuCode: 'bridge_pabean' },
         { path: '/bridge/pabean/barang-masuk', label: 'Barang Masuk', menuCode: 'bridge_barang_masuk' },
         { path: '/bridge/pabean/barang-keluar', label: 'Barang Keluar', menuCode: 'bridge_barang_keluar' },
-        { path: '/bridge/pabean/barang-reject', label: 'Barang Reject', menuCode: 'bridge_barang_reject' },
         { path: '/bridge/pabean/pergerakan', label: 'Barang Mutasi', menuCode: 'bridge_pabean_movement' },
     ];
 
