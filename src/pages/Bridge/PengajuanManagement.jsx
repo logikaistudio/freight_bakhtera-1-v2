@@ -108,6 +108,7 @@ const PengajuanManagement = () => {
         shipper: '',
         origin: '',
         destination: '',
+        receiver: '',
         itemDate: '',  // Tanggal Masuk/Keluar Barang (conditional based on type)
         packages: [],
         documents: [],
@@ -188,6 +189,7 @@ const PengajuanManagement = () => {
             shipper: '',
             origin: '',
             destination: '',
+            receiver: '',
             itemDate: '',
             packages: [],
             documents: [],
@@ -246,6 +248,7 @@ const PengajuanManagement = () => {
             shipper: p.shipper,
             origin: p.origin || '',
             destination: p.destination || '',
+            receiver: p.receiver || '',
             itemDate: p.itemDate || '',
             packages: p.packages || [],
             documents: p.documents || [],
@@ -1197,8 +1200,8 @@ const PengajuanManagement = () => {
                         </div>
                     </div>
 
-                    {/* Origin & Destination */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Origin, Destination & Receiver */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-silver mb-2">Asal</label>
                             <input
@@ -1219,6 +1222,22 @@ const PengajuanManagement = () => {
                                 placeholder="Negara/Kota tujuan"
                                 className="w-full"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-silver mb-2">
+                                Penerima {formData.type === 'outbound' && <span className="text-accent-orange">*</span>}
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.receiver}
+                                onChange={(e) => setFormData({ ...formData, receiver: e.target.value })}
+                                placeholder="Nama penerima barang"
+                                className="w-full"
+                            />
+                            {formData.type === 'outbound' && (
+                                <p className="text-xs text-silver-dark mt-1">Nama penerima untuk pengajuan barang keluar</p>
+                            )}
                         </div>
                     </div>
 

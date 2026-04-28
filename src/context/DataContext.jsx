@@ -174,6 +174,10 @@ export const DataProvider = ({ children }) => {
         subtotalAfterDiscount: q.subtotal_after_discount || null,
         taxAmount: q.tax_amount || null,
         grandTotal: q.grand_total || null,
+        receiver: q.receiver || null,
+        origin: q.origin || null,
+        destination: q.destination || null,
+        shipper: q.shipper || null,
     });
 
 
@@ -1960,6 +1964,7 @@ export const DataProvider = ({ children }) => {
             shipper: quotation.shipper || null,
             origin: quotation.origin || null,
             destination: quotation.destination || null,
+            receiver: quotation.receiver || null,
 
             // JSONB fields - pricing & services
             packages: quotation.packages || null,
@@ -2369,6 +2374,11 @@ export const DataProvider = ({ children }) => {
         if (updatedData.invoiceCurrency !== undefined) dbUpdateData.invoice_currency = updatedData.invoiceCurrency;
         if (updatedData.exchangeRate !== undefined) dbUpdateData.exchange_rate = updatedData.exchangeRate ? Number(updatedData.exchangeRate) : null;
         if (updatedData.exchangeRateDate !== undefined) dbUpdateData.exchange_rate_date = updatedData.exchangeRateDate || null;
+        if (updatedData.receiver !== undefined) dbUpdateData.receiver = updatedData.receiver;
+        if (updatedData.origin !== undefined) dbUpdateData.origin = updatedData.origin;
+        if (updatedData.destination !== undefined) dbUpdateData.destination = updatedData.destination;
+        if (updatedData.shipper !== undefined) dbUpdateData.shipper = updatedData.shipper;
+        if (updatedData.customer !== undefined) dbUpdateData.customer = updatedData.customer;
 
         // Always update timestamp
         dbUpdateData.updated_at = new Date().toISOString();
@@ -2472,6 +2482,8 @@ export const DataProvider = ({ children }) => {
                     customs_doc_date: updatedQuotation.bcDocumentDate || updatedQuotation.bc_document_date,
                     receipt_number: updatedQuotation.quotationNumber || updatedQuotation.quotation_number,
                     sender: updatedQuotation.shipper || updatedQuotation.customer,
+                    receiver: updatedQuotation.receiver || updatedQuotation.customer || '',
+                    destination: updatedQuotation.destination || '',
 
                     item_code: updatedQuotation.itemCode || flatItems[0]?.itemCode || null,
                     asset_name: flatItems[0]?.assetName || 'Bulk Items',
@@ -2507,7 +2519,7 @@ export const DataProvider = ({ children }) => {
                     receiptNumber: transactionData.receipt_number,
                     itemCode: transactionData.item_code,
                     assetName: transactionData.asset_name,
-                    receiver: updatedQuotation.customer,
+                    receiver: updatedQuotation.receiver || updatedQuotation.customer,
                     supplier: updatedQuotation.shipper,
                     destination: updatedQuotation.destination,
                     // Items array for BarangMasuk.jsx flatMap

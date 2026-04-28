@@ -65,7 +65,8 @@ const BarangKeluar = () => {
             customsDocType: t.customsDocType,
             customsDocNumber: t.customsDocNumber,
             customsDocDate: t.customsDocDate,
-            destination: t.destination || t.receiver || '-',
+            receiver: quot?.receiver || t.receiver || t.customer || '-',
+            destination: t.destination || '-',
             invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
             // item-level fields
             itemCode: item.itemCode || t.itemCode || '-',
@@ -99,7 +100,7 @@ const BarangKeluar = () => {
             { header: 'No. Pabean', key: 'customsDocNumber', width: 20 },
             { header: 'Tgl Dokumen Pabean', key: 'customsDocDateStr', width: 16, align: 'center' },
             { header: 'Nama Pemilik', key: 'ownerName', width: 28 },
-            { header: 'Tujuan', key: 'destination', width: 25 },
+            { header: 'Penerima', key: 'receiver', width: 25 },
             { header: 'Kode Barang', key: 'itemCode', width: 18 },
             { header: 'Nama Barang (Item)', key: 'itemName', width: 40 },
             { header: 'Satuan', key: 'unit', width: 12 },
@@ -127,7 +128,7 @@ const BarangKeluar = () => {
             { key: 'customsDocNumber', header: 'No. Pabean' },
             { key: 'customsDocDateStr', header: 'Tgl Pabean' },
             { key: 'ownerName', header: 'Nama Pemilik' },
-            { key: 'destination', header: 'Tujuan' },
+            { key: 'receiver', header: 'Penerima' },
             { key: 'itemCode', header: 'Kode Barang' },
             { key: 'itemName', header: 'Nama Barang (Item)' },
             { key: 'unit', header: 'Satuan' },
@@ -227,7 +228,7 @@ const BarangKeluar = () => {
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-16">Jenis Dok</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">No. Pabean</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-22">Tgl Pabean</th>
-                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-28">Tujuan</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-28">Penerima</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode Barang</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-36">Nama Barang</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-14">Satuan</th>
@@ -260,7 +261,7 @@ const BarangKeluar = () => {
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver text-xs max-w-[112px] truncate whitespace-nowrap">{row.destination}</td>
+                                        <td className="px-2 py-1.5 text-silver text-xs max-w-[112px] truncate whitespace-nowrap">{row.receiver}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
                                         <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.unit || '-'}</td>
