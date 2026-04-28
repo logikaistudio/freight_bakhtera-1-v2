@@ -80,8 +80,8 @@ const BarangMasuk = () => {
             unit: item.unit || t.unit || '-',
             quantity: Number(item.quantity) || 0,
             value: Number(item.value) || 0,
-            // nilaiBarang = harga satuan (Nominal per unit dari form item)
-            nilaiBarang: Number(item.price) || (item.quantity && item.value ? Number(item.value) / Number(item.quantity) : 0),
+            // nilaiBarang = kolom TOTAL = qty × price (item.totalPrice dari PackageItemManager)
+            nilaiBarang: Number(item.totalPrice) || (Number(item.quantity) * Number(item.price)) || Number(item.value) || 0,
             // jumlahBarang = JML = jumlah/qty item (kolom JML di PackageItemManager)
             jumlahBarang: Number(item.quantity) || 0,
         }));
