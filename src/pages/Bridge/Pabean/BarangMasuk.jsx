@@ -328,23 +328,23 @@ const BarangMasuk = () => {
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
-                        <thead className="bg-accent-blue/10">
+                        <thead className="bg-accent-blue/10 sticky top-0 z-10">
                             <tr>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider w-10">No</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Bukti Penerimaan</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Bukti Penerimaan</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Nama Pemilik</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pengajuan</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Jenis Dok</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">No. Pabean</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Tgl Pabean</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Pengirim</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Kode Barang</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-silver uppercase tracking-wider">Nama Barang (Item)</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Satuan</th>
-                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Nilai Barang</th>
-                                <th className="px-3 py-3 text-right text-xs font-semibold text-silver uppercase tracking-wider">Jumlah Barang</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-silver uppercase tracking-wider">Dok. Pendukung</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-32">No. Bukti Penerimaan</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-24">Tgl Bukti</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-32">Nama Pemilik</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-28">No. Pengajuan</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-16">Jenis Dok</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">No. Pabean</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-22">Tgl Pabean</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-28">Pengirim</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode Barang</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-36">Nama Barang</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-14">Satuan</th>
+                                <th className="px-2 py-2 text-right text-xs font-semibold text-silver uppercase tracking-wider w-20">Jml Barang</th>
+                                <th className="px-2 py-2 text-right text-xs font-semibold text-silver uppercase tracking-wider w-24">Nilai Barang</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-20">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
@@ -357,40 +357,37 @@ const BarangMasuk = () => {
                             ) : (
                                 flatRows.map((row, idx) => (
                                     <tr key={idx} className="hover:bg-dark-surface/50 transition-colors">
-                                        {/* No - item sequence number from pengajuan */}
-                                        <td className="px-3 py-2.5 text-center font-bold text-white">{row._itemSeqNo}</td>
-                                        {/* No. Bukti Penerimaan = BL/AWB Number */}
-                                        <td className="px-3 py-2.5 text-accent-blue font-mono font-medium whitespace-nowrap">
+                                        <td className="px-2 py-1.5 text-center font-bold text-white text-xs">{row._itemSeqNo}</td>
+                                        <td className="px-2 py-1.5 text-accent-blue font-mono font-medium whitespace-nowrap text-xs max-w-[128px] truncate">
                                             {row.blNumber !== '-' ? row.blNumber : <span className="text-silver-dark italic">-</span>}
                                         </td>
-                                        {/* Tgl Bukti Penerimaan = BL/AWB Date */}
-                                        <td className="px-3 py-2.5 text-center text-silver whitespace-nowrap">
+                                        <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.blDate ? new Date(row.blDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-3 py-2.5 text-silver font-medium">{row.ownerName}</td>
-                                        <td className="px-3 py-2.5 text-silver-dark font-mono whitespace-nowrap">{row.pengajuanNumber || '-'}</td>
-                                        <td className="px-3 py-2.5 text-silver">{row.customsDocType || 'BC 2.3'}</td>
-                                        <td className="px-3 py-2.5 text-silver font-mono whitespace-nowrap">{row.customsDocNumber || '-'}</td>
-                                        <td className="px-3 py-2.5 text-center text-silver whitespace-nowrap">
+                                        <td className="px-2 py-1.5 text-silver font-medium text-xs max-w-[128px] truncate whitespace-nowrap">{row.ownerName}</td>
+                                        <td className="px-2 py-1.5 text-silver-dark font-mono whitespace-nowrap text-xs">{row.pengajuanNumber || '-'}</td>
+                                        <td className="px-2 py-1.5 text-silver whitespace-nowrap text-xs">{row.customsDocType || 'BC 2.3'}</td>
+                                        <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.customsDocNumber || '-'}</td>
+                                        <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-3 py-2.5 text-silver">{row.sender || '-'}</td>
-                                        <td className="px-3 py-2.5 text-silver font-mono">{row.itemCode || '-'}</td>
-                                        <td className="px-3 py-2.5 text-silver-light max-w-[180px] truncate">{row.itemName}</td>
-                                        <td className="px-3 py-2.5 text-center text-silver">{row.unit || '-'}</td>
-                                        <td className="px-3 py-2.5 text-right text-silver font-medium">
+                                        <td className="px-2 py-1.5 text-silver text-xs max-w-[112px] truncate whitespace-nowrap">{row.sender || '-'}</td>
+                                        <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
+                                        <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
+                                        <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.unit || '-'}</td>
+                                        <td className="px-2 py-1.5 text-right text-silver-light font-medium text-xs whitespace-nowrap">
+                                            {row.jumlahBarang ? Number(row.jumlahBarang).toLocaleString('id-ID') : '-'}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-right text-accent-green font-medium text-xs whitespace-nowrap">
                                             {row.nilaiBarang ? Number(row.nilaiBarang).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
-                                        <td className="px-3 py-2.5 text-right text-accent-green font-medium">
-                                            {row.jumlahBarang ? Number(row.jumlahBarang).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-center">
+                                        <td className="px-2 py-1.5 text-center">
                                             <button
                                                 onClick={() => navigate(`/bridge/pengajuan?detail=${encodeURIComponent(row.pengajuanNumber)}`)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors text-xs font-medium"
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors text-xs font-medium whitespace-nowrap"
                                                 title="Lihat Detail Pengajuan"
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
+                                                <Eye className="w-3 h-3" />
                                                 <span>Detail</span>
                                             </button>
                                         </td>
