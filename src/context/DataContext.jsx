@@ -148,37 +148,46 @@ export const DataProvider = ({ children }) => {
     const [leads, setLeads] = useState([]);
 
     // Shared Helper: Map Quotation DB -> State
-    const normalizeQuotation = (q) => ({
-        ...q,
-        quotationNumber: q.quotation_number,
-        submissionDate: q.submission_date || q.date,
-        documentStatus: q.document_status,
-        customsStatus: q.customs_status,
-        bcDocumentNumber: q.bc_document_number,
-        bcDocumentDate: q.bc_document_date,
-        bcDocType: q.bc_document_type,
-        bcSupportingDocuments: q.bc_supporting_documents || [],
-        validUntil: q.valid_until,
-        itemCode: q.item_code,
-        // BL / AWB fields
-        blNumber: q.bl_number || null,
-        blDate: q.bl_date || null,
-        // Pricing & Services fields
-        services: q.services || null,
-        customCosts: q.custom_costs || null,
-        discountType: q.discount_type || null,
-        discountValue: q.discount_value || null,
-        taxRate: q.tax_rate || null,
-        subtotalBeforeDiscount: q.subtotal_before_discount || null,
-        discountAmount: q.discount_amount || null,
-        subtotalAfterDiscount: q.subtotal_after_discount || null,
-        taxAmount: q.tax_amount || null,
-        grandTotal: q.grand_total || null,
-        receiver: q.receiver || null,
-        origin: q.origin || null,
-        destination: q.destination || null,
-        shipper: q.shipper || null,
-    });
+    const normalizeQuotation = (q) => {
+        // Parse documents if it's a string
+        let docs = q.documents || {};
+        if (typeof docs === 'string') {
+            try { docs = JSON.parse(docs); } catch (e) { docs = {}; }
+        }
+
+        return {
+            ...q,
+            quotationNumber: q.quotation_number,
+            submissionDate: q.submission_date || q.date,
+            documentStatus: q.document_status,
+            customsStatus: q.customs_status,
+            bcDocumentNumber: q.bc_document_number,
+            bcDocumentDate: q.bc_document_date,
+            bcDocType: q.bc_document_type,
+            bcSupportingDocuments: q.bc_supporting_documents || [],
+            validUntil: q.valid_until,
+            itemCode: q.item_code,
+            // BL / AWB fields
+            blNumber: q.bl_number || null,
+            blDate: q.bl_date || null,
+            // Pricing & Services fields
+            services: q.services || null,
+            customCosts: q.custom_costs || null,
+            discountType: q.discount_type || null,
+            discountValue: q.discount_value || null,
+            taxRate: q.tax_rate || null,
+            subtotalBeforeDiscount: q.subtotal_before_discount || null,
+            discountAmount: q.discount_amount || null,
+            subtotalAfterDiscount: q.subtotal_after_discount || null,
+            taxAmount: q.tax_amount || null,
+            grandTotal: q.grand_total || null,
+            // Custom fields fallback to documents JSONB
+            receiver: q.receiver || docs.receiver || null,
+            origin: q.origin || docs.origin || null,
+            destination: q.destination || docs.destination || null,
+            shipper: q.shipper || docs.shipper || null,
+        };
+    };
 
 
     // Shared Helper: Map Inbound DB -> State (freight_inbound schema)
@@ -1998,15 +2007,17 @@ export const DataProvider = ({ children }) => {
             // Type and details
             type: quotation.type,
             item_code: quotation.itemCode || null,
-            shipper: quotation.shipper || null,
-            origin: quotation.origin || null,
-            destination: quotation.destination || null,
-            receiver: quotation.receiver || null,
-
-            // JSONB fields - pricing & services
+            // JSONB fields - pricing & services & custom fields
             packages: quotation.packages || null,
             services: quotation.services || null,
             custom_costs: quotation.customCosts || null,
+            documents: {
+                ...(quotation.documents || {}),
+                receiver: quotation.receiver || null,
+                origin: quotation.origin || null,
+                destination: quotation.destination || null,
+                shipper: quotation.shipper || null,
+            },
 
             // Discount & Tax fields
             discount_type: quotation.discountType || null,
@@ -2033,10 +2044,12 @@ export const DataProvider = ({ children }) => {
             updated_at: new Date().toISOString()
         };
 
-        // Handle documents JSONB field
+        // Already handled above in newQuotation.documents
+        /*
         if (quotation.documents) {
             newQuotation.documents = Array.isArray(quotation.documents) ? quotation.documents : quotation.documents;
         }
+        */
 
         console.log('🔵 Inserting quotation with data:', newQuotation);
 
@@ -2411,11 +2424,19 @@ export const DataProvider = ({ children }) => {
         if (updatedData.invoiceCurrency !== undefined) dbUpdateData.invoice_currency = updatedData.invoiceCurrency;
         if (updatedData.exchangeRate !== undefined) dbUpdateData.exchange_rate = updatedData.exchangeRate ? Number(updatedData.exchangeRate) : null;
         if (updatedData.exchangeRateDate !== undefined) dbUpdateData.exchange_rate_date = updatedData.exchangeRateDate || null;
-        if (updatedData.receiver !== undefined) dbUpdateData.receiver = updatedData.receiver;
-        if (updatedData.origin !== undefined) dbUpdateData.origin = updatedData.origin;
-        if (updatedData.destination !== undefined) dbUpdateData.destination = updatedData.destination;
-        if (updatedData.shipper !== undefined) dbUpdateData.shipper = updatedData.shipper;
         if (updatedData.customer !== undefined) dbUpdateData.customer = updatedData.customer;
+
+        // Persist custom fields to documents JSONB to avoid schema cache errors
+        if (updatedData.receiver !== undefined || updatedData.origin !== undefined || updatedData.destination !== undefined || updatedData.shipper !== undefined) {
+            const currentDocs = typeof quotation.documents === 'string' ? JSON.parse(quotation.documents) : (quotation.documents || {});
+            dbUpdateData.documents = {
+                ...(dbUpdateData.documents || currentDocs || {}),
+                ...(updatedData.receiver !== undefined ? { receiver: updatedData.receiver } : {}),
+                ...(updatedData.origin !== undefined ? { origin: updatedData.origin } : {}),
+                ...(updatedData.destination !== undefined ? { destination: updatedData.destination } : {}),
+                ...(updatedData.shipper !== undefined ? { shipper: updatedData.shipper } : {}),
+            };
+        }
 
         // Always update timestamp
         dbUpdateData.updated_at = new Date().toISOString();
