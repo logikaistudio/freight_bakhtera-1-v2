@@ -42,7 +42,7 @@ export const exportToXLS = (data, fileName, headerRows, columns) => {
         normal: { font: { sz: 10, name: 'Arial' }, alignment: { horizontal: "left" } },
         tableHeader: {
             font: { bold: true, color: { rgb: "FFFFFF" }, name: 'Arial', sz: 10 },
-            fill: { patternType: "solid", fgColor: { rgb: "0077BE" } }, // Blue like in screenshot
+            fill: { patternType: "solid", fgColor: { rgb: "0077BE" } },
             alignment: { horizontal: "center", vertical: "center" },
             border: {
                 top: { style: "thin", color: { rgb: "000000" } },
@@ -53,13 +53,8 @@ export const exportToXLS = (data, fileName, headerRows, columns) => {
         },
         cell: {
             font: { sz: 10, name: 'Arial' },
-            alignment: { horizontal: "left", vertical: "center" },
-            border: {
-                top: { style: "thin", color: { rgb: "E0E0E0" } }, // Lighter inner border
-                bottom: { style: "thin", color: { rgb: "E0E0E0" } },
-                left: { style: "thin", color: { rgb: "E0E0E0" } },
-                right: { style: "thin", color: { rgb: "E0E0E0" } }
-            }
+            alignment: { horizontal: "left", vertical: "center" }
+            // No border = no gridlines
         }
     };
 
@@ -126,36 +121,39 @@ export const exportToXLS = (data, fileName, headerRows, columns) => {
     if (hasSummary) {
         const summaryRowIndex = tableStartRow + 1 + dataRows.length;
         const summaryCells = columns.map((col, idx) => {
-            if (idx === 0) return 'TOTAL'; // Label in first column
             if (col.summary) {
-                // Calculate sum for this column
                 const sum = data.reduce((acc, item) => {
-                    // removing strict validation to coerce fuzzy numbers if any
                     const val = parseFloat(item[col.key]) || 0;
                     return acc + val;
                 }, 0);
                 return sum;
             }
+            // Put 'Total' label in the column just before the first summary column
+            const firstSummaryIdx = columns.findIndex(c => c.summary);
+            if (idx === firstSummaryIdx - 1) return 'Total';
             return '';
         });
 
-        // Add to worksheet
         XLSX.utils.sheet_add_aoa(ws, [summaryCells], { origin: { r: summaryRowIndex, c: 0 } });
 
-        // Style the Summary Row
-        summaryCells.forEach((_, cIdx) => {
+        const firstSummaryIdx = columns.findIndex(c => c.summary);
+        summaryCells.forEach((val, cIdx) => {
             const cellRef = XLSX.utils.encode_cell({ r: summaryRowIndex, c: cIdx });
-            if (!ws[cellRef]) return; // Safety check
+            if (!ws[cellRef]) return;
+
+            const isTotalLabel = cIdx === firstSummaryIdx - 1;
+            const isSummaryValue = columns[cIdx]?.summary;
 
             ws[cellRef].s = {
                 font: { bold: true, sz: 10, name: 'Arial', color: { rgb: "000000" } },
-                alignment: { horizontal: cIdx === 0 ? "left" : "center", vertical: "center" },
-                fill: { patternType: "solid", fgColor: { rgb: "FFD700" } }, // Gold highlight for visibility
+                alignment: {
+                    horizontal: isTotalLabel ? "right" : (isSummaryValue ? "right" : "left"),
+                    vertical: "center"
+                },
+                fill: { patternType: "solid", fgColor: { rgb: "D9E8F5" } }, // Light blue total row
                 border: {
-                    top: { style: "medium", color: { rgb: "000000" } },
-                    bottom: { style: "medium", color: { rgb: "000000" } },
-                    left: { style: "thin", color: { rgb: "000000" } },
-                    right: { style: "thin", color: { rgb: "000000" } }
+                    top: { style: "medium", color: { rgb: "0077BE" } },
+                    bottom: { style: "medium", color: { rgb: "0077BE" } },
                 }
             };
         });

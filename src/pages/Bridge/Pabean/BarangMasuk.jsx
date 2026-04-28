@@ -148,8 +148,8 @@ const BarangMasuk = () => {
             { header: 'Kode Barang', key: 'itemCode', width: 18 },
             { header: 'Nama Barang (Item)', key: 'itemName', width: 40 },
             { header: 'Satuan', key: 'unit', width: 12 },
-            { header: 'Nilai Barang', key: 'nilaiBarang', width: 15, align: 'right' },
-            { header: 'Jumlah Barang', key: 'jumlahBarang', width: 16, align: 'right' },
+            { header: 'Jml Barang', key: 'jumlahBarang', width: 14, align: 'right', summary: true },
+            { header: 'Nilai Barang', key: 'nilaiBarang', width: 16, align: 'right', summary: true },
         ];
 
         const data = flatRows.map(r => ({
