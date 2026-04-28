@@ -1301,6 +1301,43 @@ export const DataProvider = ({ children }) => {
         setInboundTransactions(inboundTransactions.map(t => t.id === id ? { ...t, ...updatedTransaction } : t));
     };
 
+    const updateInboundItem = async (inboundId, itemIndex, updates) => {
+        try {
+            const inbound = inboundTransactions.find(t => t.id === inboundId);
+            if (!inbound) throw new Error('Transaction not found');
+
+            const newItems = [...(inbound.items || [])];
+            if (itemIndex >= 0 && itemIndex < newItems.length) {
+                newItems[itemIndex] = { ...newItems[itemIndex], ...updates };
+            }
+
+            // Prepare payload for Supabase
+            // We need to fetch the current documents first to merge items back in
+            const { data: current, error: fetchErr } = await supabase.from('freight_inbound').select('documents').eq('id', inboundId).single();
+            if (fetchErr) throw fetchErr;
+
+            const docs = typeof current.documents === 'string' ? JSON.parse(current.documents) : (current.documents || {});
+            docs.items = newItems;
+
+            const { error: updateErr } = await supabase.from('freight_inbound').update({
+                documents: JSON.stringify(docs),
+                updated_at: new Date().toISOString()
+            }).eq('id', inboundId);
+
+            if (updateErr) throw updateErr;
+
+            // Update local state
+            setInboundTransactions(prev => prev.map(t => 
+                t.id === inboundId ? { ...t, items: newItems } : t
+            ));
+
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Error updating inbound item:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
     const deleteInboundTransaction = (id) => {
         setInboundTransactions(inboundTransactions.filter(t => t.id !== id));
     };
@@ -3518,6 +3555,7 @@ export const DataProvider = ({ children }) => {
         // Inbound Transaction operations
         addInboundTransaction,
         updateInboundTransaction,
+        updateInboundItem,
         deleteInboundTransaction,
 
         // Outbound Transaction operations

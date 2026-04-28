@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Activity, Search, Package, ArrowDownCircle, Download, FileSpreadsheet } from 'lucide-react';
+import { Activity, Search, Package, ArrowDownCircle, Download, FileSpreadsheet, Edit2, Save, XCircle } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import Button from '../../../components/Common/Button';
 import { DEFAULT_LOCATION } from '../../../constants/locationOptions';
@@ -9,11 +9,15 @@ import { exportToXLS } from '../../../utils/exportXLS';
 
 const PergerakanBarang = () => {
     const [searchParams] = useSearchParams();
-    const { inboundTransactions = [], quotations = [], mutationLogs = [], companySettings } = useData();
+    const { inboundTransactions = [], quotations = [], mutationLogs = [], companySettings, updateInboundItem } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedItem, setSelectedItem] = useState(null);
+    
+    // Edit state
+    const [editingRow, setEditingRow] = useState(null); // 'inboundId-itemIdx'
+    const [editForm, setEditForm] = useState({ adjustment: 0, notes: '' });
 
     // FLATTEN OUTBOUND TRANSACTIONS FROM QUOTATIONS (Source of Truth)
     const outboundTransactions = useMemo(() => {
@@ -102,6 +106,7 @@ const PergerakanBarang = () => {
                     ...item, // Flatten item details
                     // Ensure essential IDs are preserved and fields are prioritized
                     inboundId: t.id,
+                    itemIdx: itemIdx,
                     // Strick Mapping: PREFER item level data. Do NOT fallback to 't' (header) easily for multi-item arrays.
                     assetName: item.itemName || item.name || item.assetName || item.description,
                     itemCode: item.itemCode || item.item_code || item.code, // Avoid t.itemCode fallback inside items loop
@@ -175,14 +180,17 @@ const PergerakanBarang = () => {
                 outboundDocTypes = [...new Set(relatedOutbound.map(item => item.bcDocType).filter(Boolean))];
             }
 
-            const balance = inbound.originalQty - totalOut;
+            const adjustment = Number(inbound.adjustment) || 0;
+            const balance = inbound.originalQty - totalOut + adjustment;
 
             return {
                 ...inbound,
                 qtyMasuk: inbound.originalQty,
                 qtyKeluar: totalOut,
+                qtyAdjustment: adjustment,
                 latestOutboundDate: latestOutboundDate,
                 qtySisa: balance,
+                keterangan: inbound.notes || inbound.remarks || '-',
                 // Ensure noUrut is preserved
                 noUrut: inbound.noUrut,
                 // New Fields for BC Types
@@ -191,6 +199,33 @@ const PergerakanBarang = () => {
             };
         });
     }, [allInboundItems, allOutboundItems]);
+
+    // Edit Handlers
+    const handleEdit = (item) => {
+        setEditingRow(`${item.inboundId}-${item.itemIdx}`);
+        setEditForm({
+            adjustment: item.qtyAdjustment || 0,
+            notes: item.keterangan === '-' ? '' : item.keterangan
+        });
+    };
+
+    const handleCancel = () => {
+        setEditingRow(null);
+        setEditForm({ adjustment: 0, notes: '' });
+    };
+
+    const handleSave = async (item) => {
+        const res = await updateInboundItem(item.inboundId, item.itemIdx, {
+            adjustment: Number(editForm.adjustment) || 0,
+            notes: editForm.notes
+        });
+
+        if (res.success) {
+            setEditingRow(null);
+        } else {
+            alert('Gagal menyimpan perubahan');
+        }
+    };
 
     // Filtering
     const filteredData = reconciliationData.filter(item => {
@@ -224,8 +259,10 @@ const PergerakanBarang = () => {
             { key: 'assetName', header: 'Nama Barang' },
             { key: 'qtyMasuk', header: 'Jml Masuk' },
             { key: 'qtyKeluar', header: 'Jml Keluar' },
+            { key: 'qtyAdjustment', header: 'Penyesuaian (adjustment)' },
             { key: 'qtySisa', header: 'Saldo Akhir' },
-            { key: 'unit', header: 'Satuan' }
+            { key: 'unit', header: 'Satuan' },
+            { key: 'keterangan', header: 'Keterangan' }
         ];
 
         // Ensure dates are formatted for export
@@ -261,7 +298,9 @@ const PergerakanBarang = () => {
             { header: 'Satuan', key: 'unit', width: 8, align: 'center' },
             { header: 'Jml Masuk', key: 'qtyMasuk', width: 12, align: 'center', summary: true },
             { header: 'Jml Keluar', key: 'qtyKeluar', width: 12, align: 'center', summary: true },
+            { header: 'Penyesuaian', key: 'qtyAdjustment', width: 12, align: 'center', summary: true },
             { header: 'Saldo Akhir', key: 'qtySisa', width: 12, align: 'center', summary: true },
+            { header: 'Keterangan', key: 'keterangan', width: 25 },
         ];
 
         const exportData = filteredData.map((item, idx) => ({
@@ -389,7 +428,10 @@ const PergerakanBarang = () => {
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Satuan</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Jml Masuk</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-orange-400 whitespace-nowrap">Jml Keluar</th>
+                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-yellow-400 whitespace-nowrap">Penyesuaian</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-green-400 whitespace-nowrap">Saldo Akhir</th>
+                                <th className="px-3 py-1.5 text-left text-[11px] font-bold text-silver whitespace-nowrap">Keterangan</th>
+                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -420,8 +462,63 @@ const PergerakanBarang = () => {
                                         <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">{item.unit || 'pcs'}</td>
                                         <td className="px-3 py-1 text-[11px] text-center text-silver-light font-semibold whitespace-nowrap">{item.qtyMasuk}</td>
                                         <td className="px-3 py-1 text-[11px] text-center text-orange-400 font-semibold whitespace-nowrap">{item.qtyKeluar}</td>
+                                        <td className="px-3 py-1 text-[11px] text-center text-yellow-400 font-semibold whitespace-nowrap">
+                                            {editingRow === `${item.inboundId}-${item.itemIdx}` ? (
+                                                <input
+                                                    type="number"
+                                                    value={editForm.adjustment}
+                                                    onChange={(e) => setEditForm({ ...editForm, adjustment: e.target.value })}
+                                                    className="w-16 px-1 py-0.5 bg-dark-bg border border-accent-blue rounded text-center text-xs"
+                                                />
+                                            ) : (
+                                                item.qtyAdjustment || 0
+                                            )}
+                                        </td>
                                         <td className={`px-3 py-1 text-[11px] text-center font-bold whitespace-nowrap ${item.qtySisa > 0 ? 'text-green-400' : 'text-silver-dark'}`}>
                                             {item.qtySisa}
+                                        </td>
+                                        <td className="px-3 py-1 text-[11px] text-left text-silver-dark whitespace-nowrap">
+                                            {editingRow === `${item.inboundId}-${item.itemIdx}` ? (
+                                                <input
+                                                    type="text"
+                                                    value={editForm.notes}
+                                                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                                    className="w-full px-2 py-0.5 bg-dark-bg border border-accent-blue rounded text-xs"
+                                                    placeholder="Catatan..."
+                                                />
+                                            ) : (
+                                                <div className="truncate max-w-[150px]" title={item.keterangan}>
+                                                    {item.keterangan}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-1 text-center">
+                                            {editingRow === `${item.inboundId}-${item.itemIdx}` ? (
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => handleSave(item)}
+                                                        className="p-1 text-accent-green hover:bg-accent-green/10 rounded-md transition-colors"
+                                                        title="Simpan"
+                                                    >
+                                                        <Save className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={handleCancel}
+                                                        className="p-1 text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
+                                                        title="Batal"
+                                                    >
+                                                        <XCircle className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleEdit(item)}
+                                                    className="p-1 text-accent-blue hover:bg-accent-blue/10 rounded-md transition-colors"
+                                                    title="Edit Mutasi"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
