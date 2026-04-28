@@ -1464,7 +1464,6 @@ export const DataProvider = ({ children }) => {
             customs_doc_date: newTransaction.customsDocDate,
             customs_doc_type: newTransaction.customsDocType,
             destination: newTransaction.destination,
-            receiver: newTransaction.receiver,
             notes: newTransaction.notes,
             created_at: newTransaction.createdAt,
             date: newTransaction.date || new Date().toISOString().split('T')[0],
@@ -1472,7 +1471,8 @@ export const DataProvider = ({ children }) => {
             documents: {
                 totalOperationalCost: newTransaction.totalOperationalCost,
                 netRevenue: newTransaction.netRevenue,
-                status: newTransaction.status
+                status: newTransaction.status,
+                receiver: newTransaction.receiver
             }
         };
 
@@ -2011,33 +2011,21 @@ export const DataProvider = ({ children }) => {
             packages: quotation.packages || null,
             services: quotation.services || null,
             custom_costs: quotation.customCosts || null,
+            // Supporting documents
+            bc_supporting_documents: quotation.bcSupportingDocuments || null,
+            // Notes & PIC
+            notes: quotation.notes || null,
+            rejection_reason: quotation.rejectionReason || null,
+            pic: quotation.pic || null,
+            
+            // Merge custom fields into documents JSONB
             documents: {
-                ...(quotation.documents || {}),
+                ...(typeof quotation.documents === 'string' ? JSON.parse(quotation.documents) : (quotation.documents || {})),
                 receiver: quotation.receiver || null,
                 origin: quotation.origin || null,
                 destination: quotation.destination || null,
                 shipper: quotation.shipper || null,
             },
-
-            // Discount & Tax fields
-            discount_type: quotation.discountType || null,
-            discount_value: quotation.discountValue ? Number(quotation.discountValue) : null,
-            tax_rate: quotation.taxRate ? Number(quotation.taxRate) : null,
-            subtotal_before_discount: quotation.subtotalBeforeDiscount ? Number(quotation.subtotalBeforeDiscount) : null,
-            discount_amount: quotation.discountAmount ? Number(quotation.discountAmount) : null,
-            subtotal_after_discount: quotation.subtotalAfterDiscount ? Number(quotation.subtotalAfterDiscount) : null,
-            tax_amount: quotation.taxAmount ? Number(quotation.taxAmount) : null,
-            grand_total: quotation.grandTotal ? Number(quotation.grandTotal) : null,
-
-            // Supporting documents
-            bc_supporting_documents: quotation.bcSupportingDocuments || null,
-            documents: quotation.documents || null,
-
-            // Additional fields
-            notes: quotation.notes || null,
-            rejection_reason: quotation.rejectionReason || null,
-            rejection_date: quotation.rejectionDate || null,
-            pic: quotation.pic || null,
 
             // Timestamps
             created_at: new Date().toISOString(),
@@ -2429,14 +2417,23 @@ export const DataProvider = ({ children }) => {
         // Persist custom fields to documents JSONB to avoid schema cache errors
         if (updatedData.receiver !== undefined || updatedData.origin !== undefined || updatedData.destination !== undefined || updatedData.shipper !== undefined) {
             const currentDocs = typeof quotation.documents === 'string' ? JSON.parse(quotation.documents) : (quotation.documents || {});
+            const updateDocs = typeof dbUpdateData.documents === 'string' ? JSON.parse(dbUpdateData.documents) : (dbUpdateData.documents || {});
+            
             dbUpdateData.documents = {
-                ...(dbUpdateData.documents || currentDocs || {}),
+                ...(currentDocs || {}),
+                ...(updateDocs || {}),
                 ...(updatedData.receiver !== undefined ? { receiver: updatedData.receiver } : {}),
                 ...(updatedData.origin !== undefined ? { origin: updatedData.origin } : {}),
                 ...(updatedData.destination !== undefined ? { destination: updatedData.destination } : {}),
                 ...(updatedData.shipper !== undefined ? { shipper: updatedData.shipper } : {}),
             };
         }
+
+        // Final safety check: explicitly remove keys that are definitely not columns in freight_quotations
+        delete dbUpdateData.receiver;
+        delete dbUpdateData.origin;
+        delete dbUpdateData.destination;
+        delete dbUpdateData.shipper;
 
         // Always update timestamp
         dbUpdateData.updated_at = new Date().toISOString();
@@ -2539,8 +2536,10 @@ export const DataProvider = ({ children }) => {
                     customs_doc_number: updatedQuotation.bcDocumentNumber || updatedQuotation.bc_document_number,
                     customs_doc_date: updatedQuotation.bcDocumentDate || updatedQuotation.bc_document_date,
                     receipt_number: updatedQuotation.quotationNumber || updatedQuotation.quotation_number,
+                    
+                    // Use destination and receiver columns IF they exist, otherwise they'll be in documents
+                    // To be safe, we'll keep them in documents too
                     sender: updatedQuotation.shipper || updatedQuotation.customer,
-                    receiver: updatedQuotation.receiver || updatedQuotation.customer || '',
                     destination: updatedQuotation.destination || '',
 
                     item_code: updatedQuotation.itemCode || flatItems[0]?.itemCode || null,
@@ -2557,7 +2556,11 @@ export const DataProvider = ({ children }) => {
                         items: flatItems,
                         kurs: updatedQuotation.exchangeRate || updatedQuotation.exchange_rate || quotation.exchange_rate,
                         invoiceValue: updatedQuotation.invoiceValue || updatedQuotation.invoice_value || quotation.invoice_value,
-                        invoiceCurrency: updatedQuotation.invoiceCurrency || updatedQuotation.invoice_currency || quotation.invoice_currency
+                        invoiceCurrency: updatedQuotation.invoiceCurrency || updatedQuotation.invoice_currency || quotation.invoice_currency,
+                        // Backup of custom fields
+                        receiver: updatedQuotation.receiver || updatedQuotation.customer || '',
+                        origin: updatedQuotation.origin || '',
+                        destination: updatedQuotation.destination || ''
                     }),
 
                     notes: updatedQuotation.notes || '',
