@@ -152,7 +152,13 @@ export const DataProvider = ({ children }) => {
         // Parse documents if it's a string
         let docs = q.documents || {};
         if (typeof docs === 'string') {
-            try { docs = JSON.parse(docs); } catch (e) { docs = {}; }
+            try { 
+                // Handle cases where string might be empty or invalid
+                docs = docs ? JSON.parse(docs) : {}; 
+            } catch (e) { 
+                console.warn('Failed to parse documents JSON:', e);
+                docs = {}; 
+            }
         }
 
         return {
@@ -164,7 +170,7 @@ export const DataProvider = ({ children }) => {
             bcDocumentNumber: q.bc_document_number,
             bcDocumentDate: q.bc_document_date,
             bcDocType: q.bc_document_type,
-            bcSupportingDocuments: q.bc_supporting_documents || [],
+            bcSupportingDocuments: Array.isArray(q.bc_supporting_documents) ? q.bc_supporting_documents : [],
             validUntil: q.valid_until,
             itemCode: q.item_code,
             // BL / AWB fields
@@ -181,7 +187,10 @@ export const DataProvider = ({ children }) => {
             subtotalAfterDiscount: q.subtotal_after_discount || null,
             taxAmount: q.tax_amount || null,
             grandTotal: q.grand_total || null,
-            // Custom fields fallback to documents JSONB
+            // Custom fields fallback - ALWAYS return array (handle object, array, or null from JSONB)
+            documents: Array.isArray(docs)
+                ? docs
+                : (Array.isArray(docs.files) ? docs.files : []),
             receiver: q.receiver || docs.receiver || null,
             origin: q.origin || docs.origin || null,
             destination: q.destination || docs.destination || null,
@@ -2018,14 +2027,36 @@ export const DataProvider = ({ children }) => {
             rejection_reason: quotation.rejectionReason || null,
             pic: quotation.pic || null,
             
-            // Merge custom fields into documents JSONB
-            documents: {
-                ...(typeof quotation.documents === 'string' ? JSON.parse(quotation.documents) : (quotation.documents || {})),
-                receiver: quotation.receiver || null,
-                origin: quotation.origin || null,
-                destination: quotation.destination || null,
-                shipper: quotation.shipper || null,
-            },
+            // Discount & Tax fields
+            discount_type: quotation.discountType || null,
+            discount_value: quotation.discountValue ? Number(quotation.discountValue) : null,
+            tax_rate: quotation.taxRate ? Number(quotation.taxRate) : null,
+            subtotal_before_discount: quotation.subtotalBeforeDiscount ? Number(quotation.subtotalBeforeDiscount) : null,
+            discount_amount: quotation.discountAmount ? Number(quotation.discountAmount) : null,
+            subtotal_after_discount: quotation.subtotalAfterDiscount ? Number(quotation.subtotalAfterDiscount) : null,
+            tax_amount: quotation.taxAmount ? Number(quotation.taxAmount) : null,
+            grand_total: quotation.grandTotal ? Number(quotation.grandTotal) : null,
+
+            // Merge custom fields and files into documents JSONB
+            documents: (() => {
+                let initialDocs = {};
+                if (typeof quotation.documents === 'string') {
+                    try { initialDocs = JSON.parse(quotation.documents); } catch (e) { initialDocs = {}; }
+                } else {
+                    initialDocs = quotation.documents || {};
+                }
+                
+                // If initialDocs was an array, it's the old file list
+                const files = Array.isArray(initialDocs) ? initialDocs : (initialDocs.files || []);
+                
+                return {
+                    files,
+                    receiver: quotation.receiver || null,
+                    origin: quotation.origin || null,
+                    destination: quotation.destination || null,
+                    shipper: quotation.shipper || null,
+                };
+            })(),
 
             // Timestamps
             created_at: new Date().toISOString(),
@@ -2415,13 +2446,27 @@ export const DataProvider = ({ children }) => {
         if (updatedData.customer !== undefined) dbUpdateData.customer = updatedData.customer;
 
         // Persist custom fields to documents JSONB to avoid schema cache errors
-        if (updatedData.receiver !== undefined || updatedData.origin !== undefined || updatedData.destination !== undefined || updatedData.shipper !== undefined) {
-            const currentDocs = typeof quotation.documents === 'string' ? JSON.parse(quotation.documents) : (quotation.documents || {});
-            const updateDocs = typeof dbUpdateData.documents === 'string' ? JSON.parse(dbUpdateData.documents) : (dbUpdateData.documents || {});
+        if (updatedData.receiver !== undefined || updatedData.origin !== undefined || updatedData.destination !== undefined || updatedData.shipper !== undefined || updatedData.documents !== undefined) {
+            let currentDocs = {};
+            if (typeof quotation.documents === 'string') {
+                try { currentDocs = JSON.parse(quotation.documents); } catch (e) { currentDocs = {}; }
+            } else {
+                currentDocs = quotation.documents || {};
+            }
+
+            // Handle currentDocs being an old array
+            const currentFiles = Array.isArray(currentDocs) ? currentDocs : (currentDocs.files || []);
+            const currentMetadata = Array.isArray(currentDocs) ? {} : { ...currentDocs };
+            delete currentMetadata.files;
+
+            // Handle updated documents (files)
+            const newFiles = updatedData.documents !== undefined 
+                ? (Array.isArray(updatedData.documents) ? updatedData.documents : (updatedData.documents.files || currentFiles))
+                : currentFiles;
             
             dbUpdateData.documents = {
-                ...(currentDocs || {}),
-                ...(updateDocs || {}),
+                files: newFiles,
+                ...currentMetadata,
                 ...(updatedData.receiver !== undefined ? { receiver: updatedData.receiver } : {}),
                 ...(updatedData.origin !== undefined ? { origin: updatedData.origin } : {}),
                 ...(updatedData.destination !== undefined ? { destination: updatedData.destination } : {}),

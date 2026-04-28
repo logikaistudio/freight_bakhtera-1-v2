@@ -31,7 +31,8 @@ const PengajuanManagement = () => {
         mutationLogs = [],
         warehouseInventory = [],
         outboundTransactions = [], // Added for calculating already outbound stock
-        bridgeBusinessPartners = [] // NEW: Use Bridge Partners
+        bridgeBusinessPartners = [], // NEW: Use Bridge Partners
+        isExhibitionLocation // Moved to top level to avoid Rules of Hooks violation
     } = useData();
 
     // Helper lists: prefer Bridge partners, fallback to old customers/vendors
@@ -587,7 +588,7 @@ const PengajuanManagement = () => {
 
         const normalize = (str) => (str || '').toLowerCase().trim();
 
-        const { isExhibitionLocation } = useData();
+        // isExhibitionLocation is now accessed from component top-level (no useData() here)
 
         // Helper: Get stok di exhibition (Halls) for an item
         const getPameranStock = (itemCode, packageNumber) => {
@@ -700,6 +701,16 @@ const PengajuanManagement = () => {
 
     // Helper to normalize strings for robust comparison
     const normalize = (str) => (str || '').toLowerCase().trim();
+
+    // Helper to safely convert documents field to array (handles object, array, or null from DB JSONB)
+    const safeDocsArray = (docs) => {
+        if (!docs) return [];
+        if (Array.isArray(docs)) return docs;
+        // Object format: { files: [...], ... }
+        if (docs.files && Array.isArray(docs.files)) return docs.files;
+        // Fallback: unknown format
+        return [];
+    };
 
     // Helper to find mutation info for an item - used for Detail Inventaris modal
     const getItemMutationInfo = (itemCode, packageNumber, itemName, pengajuanId, pengajuanNumber) => {
@@ -1749,7 +1760,7 @@ const PengajuanManagement = () => {
                             {/* Dokumen Pendukung Section */}
                             <div>
                                 <h3 className="text-lg font-bold text-silver mb-3">📑 Dokumen Pendukung</h3>
-                                {[...(selectedPengajuan.documents || []), ...(selectedPengajuan.bcSupportingDocuments || [])].length === 0 ? (
+                                {[...safeDocsArray(selectedPengajuan.documents), ...(selectedPengajuan.bcSupportingDocuments || [])].length === 0 ? (
                                     <p className="text-silver-dark text-sm">Tidak ada dokumen.</p>
                                 ) : (
                                     <table className="w-full text-xs">
@@ -1761,7 +1772,7 @@ const PengajuanManagement = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {[...(selectedPengajuan.documents || []), ...(selectedPengajuan.bcSupportingDocuments || [])].map((doc, idx) => (
+                                            {[...safeDocsArray(selectedPengajuan.documents), ...(selectedPengajuan.bcSupportingDocuments || [])].map((doc, idx) => (
                                                 <tr key={idx}>
                                                     <td className="text-left">{doc.name || doc.fileName}</td>
                                                     <td className="text-left">{doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('id-ID') : '-'}</td>
