@@ -38,13 +38,23 @@ const BarangKeluar = () => {
     });
 
     // Helper: lookup full partner name from bridgeBusinessPartners
-    const getFullPartnerName = (shortName) => {
-        if (!shortName || shortName === '-') return '-';
-        const partner = bridgeBusinessPartners.find(p => 
-            (p.name || '').toLowerCase() === shortName.toLowerCase() ||
-            (p.name || '').toLowerCase().includes(shortName.toLowerCase()) ||
-            shortName.toLowerCase().includes((p.name || '').toLowerCase())
-        );
+    const getFullPartnerName = (input) => {
+        if (!input || input === '-') return '-';
+        const shortName = String(input).trim();
+        if (!shortName) return '-';
+
+        const partner = (bridgeBusinessPartners || []).find(p => {
+            const pName = (p.name || '').trim();
+            if (!pName) return false;
+            
+            const pNameLower = pName.toLowerCase();
+            const sNameLower = shortName.toLowerCase();
+            
+            return pNameLower === sNameLower || 
+                   pNameLower.includes(sNameLower) || 
+                   sNameLower.includes(pNameLower);
+        });
+        
         return partner ? partner.name : shortName;
     };
 
