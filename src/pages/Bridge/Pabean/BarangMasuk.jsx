@@ -97,8 +97,9 @@ const BarangMasuk = () => {
             sender,
             invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
             // item-level fields
-            itemCode: item.itemCode || t.itemCode || '-',
-            itemName: item.assetName || item.goodsType || item.itemName || t.assetName || '-',
+            itemCode: item.itemCode || item.item_code || t.itemCode || t.item_code || '-',
+            hsCode: item.hsCode || item.hs_code || t.hsCode || t.hs_code || '-',
+            itemName: item.assetName || item.goodsType || item.itemName || item.name || item.item_name || t.assetName || '-',
             unit: item.unit || t.unit || '-',
             quantity: Number(item.quantity) || 0,
             value: Number(item.value) || 0,
@@ -168,6 +169,7 @@ const BarangMasuk = () => {
             { header: 'Nama Pemilik', key: 'ownerName', width: 28 },
             { header: 'Pengirim', key: 'sender', width: 25 },
             { header: 'Kode Barang', key: 'itemCode', width: 18 },
+            { header: 'Kode HS', key: 'hsCode', width: 18 },
             { header: 'Nama Barang (Item)', key: 'itemName', width: 40 },
             { header: 'Satuan', key: 'unit', width: 12 },
             { header: 'Jml Barang', key: 'jumlahBarang', width: 14, align: 'right', summary: true },
@@ -196,6 +198,7 @@ const BarangMasuk = () => {
             { key: 'ownerName', header: 'Nama Pemilik' },
             { key: 'sender', header: 'Pengirim' },
             { key: 'itemCode', header: 'Kode Barang' },
+            { key: 'hsCode', header: 'Kode HS' },
             { key: 'itemName', header: 'Nama Barang (Item)' },
             { key: 'unit', header: 'Satuan' },
             { key: 'value', header: 'Jumlah Total' },
@@ -362,6 +365,7 @@ const BarangMasuk = () => {
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-22">Tgl Pabean</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider" style={{ minWidth: '384px' }}>Pengirim</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode Barang</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode HS</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-36">Nama Barang</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-14">Satuan</th>
                                 <th className="px-2 py-2 text-right text-xs font-semibold text-silver uppercase tracking-wider w-20">Jml Barang</th>
@@ -399,6 +403,7 @@ const BarangMasuk = () => {
                                             <div className="line-clamp-2" title={getFullPartnerName(row.sender)}>{getFullPartnerName(row.sender)}</div>
                                         </td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
+                                        <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.hsCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
                                         <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.unit || '-'}</td>
                                         <td className="px-2 py-1.5 text-right text-silver-light font-medium text-xs whitespace-nowrap">

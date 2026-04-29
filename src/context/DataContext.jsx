@@ -2588,6 +2588,7 @@ export const DataProvider = ({ children }) => {
                     destination: updatedQuotation.destination || '',
 
                     item_code: updatedQuotation.itemCode || flatItems[0]?.itemCode || null,
+                    hs_code: updatedQuotation.hsCode || flatItems[0]?.hsCode || null,
                     asset_name: flatItems[0]?.assetName || 'Bulk Items',
                     quantity: flatItems.reduce((sum, i) => sum + (i.quantity || 0), 0),
                     unit: 'pcs',
