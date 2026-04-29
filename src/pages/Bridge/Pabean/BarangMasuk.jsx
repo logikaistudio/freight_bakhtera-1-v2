@@ -333,12 +333,12 @@ const BarangMasuk = () => {
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-32">No. Bukti Penerimaan</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-24">Tgl Bukti</th>
-                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-32">Nama Pemilik</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-48">Nama Pemilik</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-28">No. Pengajuan</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-16">Jenis Dok</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">No. Pabean</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-22">Tgl Pabean</th>
-                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-28">Pengirim</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-44">Pengirim</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode Barang</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-36">Nama Barang</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-14">Satuan</th>
@@ -364,14 +364,14 @@ const BarangMasuk = () => {
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.blDate ? new Date(row.blDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver font-medium text-xs max-w-[128px] truncate whitespace-nowrap">{row.ownerName}</td>
+                                        <td className="px-2 py-1.5 text-silver font-medium text-xs">{row.ownerName}</td>
                                         <td className="px-2 py-1.5 text-silver-dark font-mono whitespace-nowrap text-xs">{row.pengajuanNumber || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver whitespace-nowrap text-xs">{row.customsDocType || 'BC 2.3'}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.customsDocNumber || '-'}</td>
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver text-xs max-w-[112px] truncate whitespace-nowrap">{row.sender || '-'}</td>
+                                        <td className="px-2 py-1.5 text-silver text-xs">{row.sender || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
                                         <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.unit || '-'}</td>
