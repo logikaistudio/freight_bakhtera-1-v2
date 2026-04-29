@@ -67,14 +67,28 @@ const BarangKeluar = () => {
         const ownerName = getFullPartnerName(t.customer || quot?.customer || t.destination || t.receiver || '-');
         const receiver = getFullPartnerName(quot?.receiver || t.receiver || t.customer || '-');
 
-        const items = t.items && t.items.length > 0 ? t.items : [{
+        // Recreate flat items from quotation to get "live" data (fixes stale transaction logs)
+        const quotItems = (quot?.packages || []).flatMap((pkg) => 
+            (pkg.items || []).map(item => ({
+                itemCode: item.itemCode || item.item_code,
+                hsCode: item.hsCode || item.hs_code,
+                assetName: item.name || item.itemName || item.item_name,
+                unit: item.unit || item.uom,
+                quantity: item.quantity,
+                price: item.price,
+                totalPrice: item.totalPrice || (Number(item.quantity) * Number(item.price))
+            }))
+        );
+
+        // Prioritize quotItems (Live) > t.items (Log) > t (Top-level Log fallback)
+        const items = quotItems.length > 0 ? quotItems : (t.items && t.items.length > 0 ? t.items : [{
             itemCode: t.itemCode,
             assetName: t.assetName,
             goodsType: t.assetName,
             unit: t.unit,
             quantity: t.quantity,
             value: t.value,
-        }];
+        }]);
 
         return items.map((item, itemIdx) => ({
             _transaction: t,
