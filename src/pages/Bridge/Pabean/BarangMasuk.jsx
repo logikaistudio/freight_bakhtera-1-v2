@@ -9,7 +9,7 @@ import DocumentPreviewModal from '../../../components/Common/DocumentPreviewModa
 import { useNavigate } from 'react-router-dom';
 
 const BarangMasuk = () => {
-    const { inboundTransactions = [], quotations = [], companySettings, bridgeSettings } = useData();
+    const { inboundTransactions = [], quotations = [], bridgeBusinessPartners = [], companySettings, bridgeSettings } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -45,12 +45,24 @@ const BarangMasuk = () => {
         return matchesDate && matchesSearch;
     });
 
+    // Helper: lookup full partner name from bridgeBusinessPartners
+    const getFullPartnerName = (shortName) => {
+        if (!shortName || shortName === '-') return '-';
+        const partner = bridgeBusinessPartners.find(p => 
+            (p.name || '').toLowerCase() === shortName.toLowerCase() ||
+            (p.name || '').toLowerCase().includes(shortName.toLowerCase()) ||
+            shortName.toLowerCase().includes((p.name || '').toLowerCase())
+        );
+        return partner ? partner.name : shortName;
+    };
+
     // Flatten: one row per item (with item sequence number from pengajuan)
     const flatRows = filteredTransactions.flatMap(t => {
         const quot = getQuotation(t.pengajuanNumber);
         const blNumber = quot?.blNumber || quot?.bl_number || '-';
         const blDate = quot?.blDate || quot?.bl_date || null;
-        const ownerName = t.customer || quot?.customer || t.sender || '-';
+        const ownerName = getFullPartnerName(t.customer || quot?.customer || t.sender || '-');
+        const sender = getFullPartnerName(t.sender || '-');
 
         const items = t.items && t.items.length > 0 ? t.items : [{
             itemCode: t.itemCode,
@@ -72,7 +84,7 @@ const BarangMasuk = () => {
             customsDocType: t.customsDocType,
             customsDocNumber: t.customsDocNumber,
             customsDocDate: t.customsDocDate,
-            sender: t.sender,
+            sender,
             invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
             // item-level fields
             itemCode: item.itemCode || t.itemCode || '-',
@@ -364,14 +376,18 @@ const BarangMasuk = () => {
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.blDate ? new Date(row.blDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver font-medium text-xs">{row.ownerName}</td>
+                                        <td className="px-2 py-1.5 text-silver font-medium text-xs">
+                                            <div className="line-clamp-2" title={row.ownerName}>{row.ownerName}</div>
+                                        </td>
                                         <td className="px-2 py-1.5 text-silver-dark font-mono whitespace-nowrap text-xs">{row.pengajuanNumber || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver whitespace-nowrap text-xs">{row.customsDocType || 'BC 2.3'}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.customsDocNumber || '-'}</td>
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver text-xs">{row.sender || '-'}</td>
+                                        <td className="px-2 py-1.5 text-silver text-xs">
+                                            <div className="line-clamp-2" title={row.sender}>{row.sender || '-'}</div>
+                                        </td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
                                         <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.unit || '-'}</td>

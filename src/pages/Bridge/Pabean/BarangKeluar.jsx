@@ -8,7 +8,7 @@ import { exportToXLS } from '../../../utils/exportXLS';
 import { useNavigate } from 'react-router-dom';
 
 const BarangKeluar = () => {
-    const { outboundTransactions = [], quotations = [], companySettings, bridgeSettings } = useData();
+    const { outboundTransactions = [], quotations = [], bridgeBusinessPartners = [], companySettings, bridgeSettings } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -37,13 +37,25 @@ const BarangKeluar = () => {
         return matchesDate && matchesSearch;
     });
 
+    // Helper: lookup full partner name from bridgeBusinessPartners
+    const getFullPartnerName = (shortName) => {
+        if (!shortName || shortName === '-') return '-';
+        const partner = bridgeBusinessPartners.find(p => 
+            (p.name || '').toLowerCase() === shortName.toLowerCase() ||
+            (p.name || '').toLowerCase().includes(shortName.toLowerCase()) ||
+            shortName.toLowerCase().includes((p.name || '').toLowerCase())
+        );
+        return partner ? partner.name : shortName;
+    };
+
     // Flatten: one row per item (same pattern as BarangMasuk)
     const flatRows = filteredTransactions.flatMap(t => {
         const quot = getQuotation(t.pengajuanNumber);
         // BL/AWB dari quotation outbound
         const blNumber = quot?.blNumber || quot?.bl_number || '-';
         const blDate = quot?.blDate || quot?.bl_date || null;
-        const ownerName = t.customer || quot?.customer || t.destination || t.receiver || '-';
+        const ownerName = getFullPartnerName(t.customer || quot?.customer || t.destination || t.receiver || '-');
+        const receiver = getFullPartnerName(quot?.receiver || t.receiver || t.customer || '-');
 
         const items = t.items && t.items.length > 0 ? t.items : [{
             itemCode: t.itemCode,
@@ -65,7 +77,7 @@ const BarangKeluar = () => {
             customsDocType: t.customsDocType,
             customsDocNumber: t.customsDocNumber,
             customsDocDate: t.customsDocDate,
-            receiver: quot?.receiver || t.receiver || t.customer || '-',
+            receiver,
             destination: t.destination || '-',
             invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
             // item-level fields
@@ -254,14 +266,18 @@ const BarangKeluar = () => {
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.blDate ? new Date(row.blDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver font-medium text-xs">{row.ownerName}</td>
+                                        <td className="px-2 py-1.5 text-silver font-medium text-xs">
+                                            <div className="line-clamp-2" title={row.ownerName}>{row.ownerName}</div>
+                                        </td>
                                         <td className="px-2 py-1.5 text-silver-dark font-mono whitespace-nowrap text-xs">{row.pengajuanNumber || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver whitespace-nowrap text-xs">{row.customsDocType || 'BC 3.0'}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.customsDocNumber || '-'}</td>
                                         <td className="px-2 py-1.5 text-center text-silver whitespace-nowrap text-xs">
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-silver text-xs">{row.receiver}</td>
+                                        <td className="px-2 py-1.5 text-silver text-xs">
+                                            <div className="line-clamp-2" title={row.receiver}>{row.receiver || '-'}</div>
+                                        </td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
                                         <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.unit || '-'}</td>
