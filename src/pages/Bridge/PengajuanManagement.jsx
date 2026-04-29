@@ -1146,7 +1146,7 @@ const PengajuanManagement = () => {
                                             <option value="">-- Pilih Pengajuan Masuk yang Approved --</option>
                                             {getApprovedInboundPengajuan().map(p => (
                                                 <option key={p.id} value={p.id}>
-                                                    {p.quotationNumber || p.quotation_number} - {p.customer} ({p.bcDocumentNumber || p.bc_document_number || 'No BC'})
+                                                    {p.quotationNumber || p.quotation_number} - {getFullPartnerName(p.customer)} ({p.bcDocumentNumber || p.bc_document_number || 'No BC'})
                                                 </option>
                                             ))}
                                         </select>
@@ -1747,11 +1747,11 @@ const PengajuanManagement = () => {
                                 </div>
                                 <div>
                                     <label className="text-xs text-silver-dark font-medium">Pemilik Barang</label>
-                                    <p className="text-sm text-silver mt-1">{selectedPengajuan.customer}</p>
+                                    <p className="text-sm text-silver mt-1">{getFullPartnerName(selectedPengajuan.customer)}</p>
                                 </div>
                                 <div>
                                     <label className="text-xs text-silver-dark font-medium">Shipper</label>
-                                    <p className="text-sm text-silver mt-1">{selectedPengajuan.shipper || '-'}</p>
+                                    <p className="text-sm text-silver mt-1">{getFullPartnerName(selectedPengajuan.shipper)}</p>
                                 </div>
                                 <div>
                                     <label className="text-xs text-silver-dark font-medium">Jenis Dokumen BC</label>
@@ -1952,7 +1952,7 @@ const PengajuanManagement = () => {
                                         </div>
                                         <div>
                                             <p className="text-silver-dark">Customer</p>
-                                            <p className="text-silver-light font-medium">{editModal.pengajuan.customer}</p>
+                                            <p className="text-silver-light font-medium">{getFullPartnerName(editModal.pengajuan.customer)}</p>
                                         </div>
                                         <div>
                                             <p className="text-silver-dark">BC Document</p>
@@ -2267,7 +2267,7 @@ const PengajuanManagement = () => {
                                                             {pengajuan.quotationNumber || pengajuan.quotation_number}
                                                         </h4>
                                                         <p className="text-sm text-silver-dark mt-1">
-                                                            {pengajuan.customer} • {pengajuan.shipper || '-'}
+                                                            {getFullPartnerName(pengajuan.customer)} • {getFullPartnerName(pengajuan.shipper)}
                                                         </p>
                                                         <p className="text-xs text-silver-dark mt-1">
                                                             BC: {pengajuan.bcDocumentNumber || pengajuan.bc_document_number || '-'}

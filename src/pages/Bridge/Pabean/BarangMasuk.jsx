@@ -52,7 +52,7 @@ const BarangMasuk = () => {
         if (!shortName) return '-';
 
         const partner = (bridgeBusinessPartners || []).find(p => {
-            const pName = (p.name || '').trim();
+            const pName = (p.partner_name || p.name || '').trim();
             if (!pName) return false;
             
             const pNameLower = pName.toLowerCase();
@@ -63,7 +63,7 @@ const BarangMasuk = () => {
                    sNameLower.includes(pNameLower);
         });
         
-        return partner ? partner.name : shortName;
+        return partner ? (partner.partner_name || partner.name) : shortName;
     };
 
     // Flatten: one row per item (with item sequence number from pengajuan)
@@ -396,7 +396,7 @@ const BarangMasuk = () => {
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
                                         <td className="px-2 py-1.5 text-silver text-xs">
-                                            <div className="line-clamp-2" title={row.sender}>{row.sender || '-'}</div>
+                                            <div className="line-clamp-2" title={getFullPartnerName(row.sender)}>{getFullPartnerName(row.sender)}</div>
                                         </td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
@@ -464,7 +464,7 @@ const BarangMasuk = () => {
                                 <span>{selectedTransaction.customsDocDate ? new Date(selectedTransaction.customsDocDate).toLocaleDateString('id-ID') : '-'}</span>
                                 <span>{new Date(selectedTransaction.date).toLocaleDateString('id-ID')}</span>
                                 <span className="text-center font-bold">{selectedTransaction.items ? selectedTransaction.items.length : 0}</span>
-                                <span className="truncate">{selectedTransaction.sender || selectedTransaction.supplier || '-'}</span>
+                                <span className="truncate" title={getFullPartnerName(selectedTransaction.sender || selectedTransaction.supplier)}>{getFullPartnerName(selectedTransaction.sender || selectedTransaction.supplier)}</span>
                             </div>
                         </div>
 

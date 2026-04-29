@@ -44,7 +44,7 @@ const BarangKeluar = () => {
         if (!shortName) return '-';
 
         const partner = (bridgeBusinessPartners || []).find(p => {
-            const pName = (p.name || '').trim();
+            const pName = (p.partner_name || p.name || '').trim();
             if (!pName) return false;
             
             const pNameLower = pName.toLowerCase();
@@ -55,7 +55,7 @@ const BarangKeluar = () => {
                    sNameLower.includes(pNameLower);
         });
         
-        return partner ? partner.name : shortName;
+        return partner ? (partner.partner_name || partner.name) : shortName;
     };
 
     // Flatten: one row per item (same pattern as BarangMasuk)
@@ -286,7 +286,7 @@ const BarangKeluar = () => {
                                             {row.customsDocDate ? new Date(row.customsDocDate).toLocaleDateString('id-ID') : '-'}
                                         </td>
                                         <td className="px-2 py-1.5 text-silver text-xs">
-                                            <div className="line-clamp-2" title={row.receiver}>{row.receiver || '-'}</div>
+                                            <div className="line-clamp-2" title={getFullPartnerName(row.receiver)}>{getFullPartnerName(row.receiver)}</div>
                                         </td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
