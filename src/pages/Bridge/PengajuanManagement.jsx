@@ -90,6 +90,27 @@ const PengajuanManagement = () => {
         }
     }, [searchParams, quotations]);
 
+    // Helper: lookup full partner name from bridgeBusinessPartners
+    const getFullPartnerName = (input) => {
+        if (!input || input === '-') return '-';
+        const shortName = String(input).trim();
+        if (!shortName || shortName === '-') return '-';
+
+        const partner = (bridgeBusinessPartners || []).find(p => {
+            const pName = (p.partner_name || p.name || '').trim();
+            if (!pName) return false;
+            
+            const pNameLower = pName.toLowerCase();
+            const sNameLower = shortName.toLowerCase();
+            
+            return pNameLower === sNameLower || 
+                   pNameLower.includes(sNameLower) || 
+                   sNameLower.includes(pNameLower);
+        });
+        
+        return partner ? (partner.partner_name || partner.name) : shortName;
+    };
+
     const [editFormData, setEditFormData] = useState({
         bcDocumentNumber: '',
         bcDocumentDate: '',
@@ -963,7 +984,13 @@ const PengajuanManagement = () => {
             { key: 'notes', header: 'Catatan' }
         ];
 
-        exportToCSV(quotations, 'Pendaftaran_TPPB', columns);
+        const mappedQuotations = quotations.map(q => ({
+            ...q,
+            customer: getFullPartnerName(q.customer),
+            shipper: getFullPartnerName(q.shipper)
+        }));
+
+        exportToCSV(mappedQuotations, 'Pendaftaran_TPPB', columns);
     };
 
     // Debug logging
@@ -1492,7 +1519,7 @@ const PengajuanManagement = () => {
                                         <tr>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">No. Pengajuan</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Tanggal</th>
-                                            <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Pemilik Barang</th>
+                                            <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap w-80">Pemilik Barang</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Dokumen BC</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Jumlah Barang</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">No. Dokumen Pabean</th>
@@ -1524,8 +1551,8 @@ const PengajuanManagement = () => {
                                                     <td className="px-4 py-2 text-sm text-silver-dark whitespace-nowrap">
                                                         {new Date(quot.submissionDate || quot.submission_date || quot.date).toLocaleDateString('id-ID')}
                                                     </td>
-                                                    <td className="px-4 py-2 text-sm text-silver whitespace-nowrap">
-                                                        {quot.customer}
+                                                    <td className="px-4 py-2 text-sm text-silver">
+                                                        <div className="line-clamp-2" title={getFullPartnerName(quot.customer)}>{getFullPartnerName(quot.customer)}</div>
                                                     </td>
                                                     <td className="px-4 py-2 text-sm text-silver whitespace-nowrap">
                                                         {quot.bcDocType || quot.bc_document_type || '-'}
@@ -1588,7 +1615,7 @@ const PengajuanManagement = () => {
                                         <tr>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">No. Pengajuan</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Tanggal</th>
-                                            <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Pemilik Barang</th>
+                                            <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap w-80">Pemilik Barang</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Dokumen BC</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">Jumlah Barang</th>
                                             <th className="px-4 py-2 text-left text-sm font-bold text-white whitespace-nowrap">No. Dokumen Pabean</th>
@@ -1620,8 +1647,8 @@ const PengajuanManagement = () => {
                                                     <td className="px-4 py-2 text-sm text-silver-dark whitespace-nowrap">
                                                         {new Date(quot.submissionDate || quot.submission_date || quot.date).toLocaleDateString('id-ID')}
                                                     </td>
-                                                    <td className="px-4 py-2 text-sm text-silver whitespace-nowrap">
-                                                        {quot.customer}
+                                                    <td className="px-4 py-2 text-sm text-silver">
+                                                        <div className="line-clamp-2" title={getFullPartnerName(quot.customer)}>{getFullPartnerName(quot.customer)}</div>
                                                     </td>
                                                     <td className="px-4 py-2 text-sm text-silver whitespace-nowrap">
                                                         {quot.bcDocType || quot.bc_document_type || '-'}
