@@ -2594,7 +2594,9 @@ export const DataProvider = ({ children }) => {
                         goodsType: item.name || item.itemName, // For BarangMasuk.jsx display
                         assetName: item.name || item.itemName,
                         quantity: item.quantity || 1,
-                        unit: item.uom || 'pcs',
+                        unit: item.uom || item.unit || 'pcs',
+                        price: item.price || 0,
+                        currency: item.currency || updatedQuotation.invoiceCurrency || updatedQuotation.invoice_currency || quotation.invoice_currency || 'IDR',
                         value: item.value || (item.price * (item.quantity || 1)) || 0,
                         packageNumber: pkg.packageNumber
                     }))

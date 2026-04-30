@@ -21,9 +21,38 @@ const BarangKeluar = () => {
              q.id === pengajuanNumber
     ) || null;
 
+    // Merge: Outbound Transactions (Logs) + Approved Outbound Pengajuan (Plan)
+    const mergedTransactions = React.useMemo(() => {
+        const transMap = new Map();
+        
+        // 1. Add actual logs
+        outboundTransactions.forEach(t => {
+            const key = t.pengajuanNumber || t.pengajuan_number || t.id;
+            transMap.set(key, t);
+        });
+
+        // 2. Add approved outbound plans
+        quotations.filter(q => q.type === 'outbound' && (q.documentStatus === 'approved' || q.document_status === 'approved')).forEach(q => {
+            const key = q.pengajuanNumber || q.quotation_number || q.id;
+            if (!transMap.has(key)) {
+                transMap.set(key, {
+                    ...q,
+                    pengajuanNumber: q.pengajuanNumber || q.quotation_number,
+                    customsDocType: q.bcDocType || q.bc_document_type || 'BC 3.0',
+                    customsDocNumber: q.bcDocumentNumber || q.bc_document_number,
+                    customsDocDate: q.bcDocumentDate || q.bc_document_date || q.approvedDate || q.approved_date,
+                    date: q.submissionDate || q.submission_date || q.approvedDate || q.approved_date || q.date,
+                    receiver: q.receiver || q.destination || '-',
+                });
+            }
+        });
+
+        return Array.from(transMap.values());
+    }, [outboundTransactions, quotations]);
+
     // Filter outbound transactions
-    const filteredTransactions = outboundTransactions.filter(t => {
-        const docDate = new Date(t.date);
+    const filteredTransactions = mergedTransactions.filter(t => {
+        const docDate = new Date(t.date || t.created_at || Date.now());
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
         if (end) end.setHours(23, 59, 59, 999);
@@ -76,6 +105,7 @@ const BarangKeluar = () => {
                 unit: item.unit || item.uom,
                 quantity: item.quantity,
                 price: item.price,
+                currency: item.currency,
                 totalPrice: item.totalPrice || (Number(item.quantity) * Number(item.price))
             }))
         );
@@ -104,7 +134,8 @@ const BarangKeluar = () => {
             customsDocDate: t.customsDocDate,
             receiver,
             destination: t.destination || '-',
-            invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
+            itemCurrency: item.currency || t.currency || t.invoiceCurrency || t.invoice_currency || 'IDR',
+            invoiceCurrency: t.invoiceCurrency || t.invoice_currency || t.currency || 'IDR',
             // item-level fields
             itemCode: item.itemCode || item.item_code || '-',
             hsCode: item.hsCode || item.hs_code || '-',
@@ -114,7 +145,6 @@ const BarangKeluar = () => {
             value: Number(item.value) || 0,
             // jumlahBarang = JML = kolom JML di PackageItemManager
             jumlahBarang: Number(item.quantity) || 0,
-            itemCurrency: item.currency || t.invoiceCurrency || 'IDR',
             nominalBarang: Number(item.price) || (Number(item.value) / (Number(item.quantity) || 1)) || 0,
             // nilaiBarang = TOTAL = qty × price (kolom Total di PackageItemManager)
             nilaiBarang: Number(item.totalPrice) || (Number(item.quantity) * Number(item.price)) || Number(item.value) || 0,

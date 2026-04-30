@@ -27,9 +27,40 @@ const BarangMasuk = () => {
              q.id === pengajuanNumber
     ) || null;
 
+    // Merge: Inbound Transactions (Logs) + Approved Inbound Pengajuan (Plan)
+    // This ensures that even if automation fails, approved documents still show in Pabean report
+    const mergedTransactions = React.useMemo(() => {
+        const transMap = new Map();
+        
+        // 1. Add all actual transaction logs
+        inboundTransactions.forEach(t => {
+            const key = t.pengajuanNumber || t.pengajuan_number || t.id;
+            transMap.set(key, t);
+        });
+
+        // 2. Add approved quotations that don't have transaction logs yet
+        quotations.filter(q => q.type === 'inbound' && (q.documentStatus === 'approved' || q.document_status === 'approved')).forEach(q => {
+            const key = q.pengajuanNumber || q.quotation_number || q.id;
+            if (!transMap.has(key)) {
+                transMap.set(key, {
+                    ...q,
+                    pengajuanNumber: q.pengajuanNumber || q.quotation_number,
+                    customsDocType: q.bcDocType || q.bc_document_type || 'BC 2.3',
+                    customsDocNumber: q.bcDocumentNumber || q.bc_document_number,
+                    customsDocDate: q.bcDocumentDate || q.bc_document_date || q.approvedDate || q.approved_date,
+                    date: q.submissionDate || q.submission_date || q.approvedDate || q.approved_date || q.date,
+                    sender: q.shipper || q.customer || '-',
+                    // items will be handled by the mapping logic
+                });
+            }
+        });
+
+        return Array.from(transMap.values());
+    }, [inboundTransactions, quotations]);
+
     // Filter Transactions
-    const filteredTransactions = inboundTransactions.filter(t => {
-        const docDate = new Date(t.date);
+    const filteredTransactions = mergedTransactions.filter(t => {
+        const docDate = new Date(t.date || t.created_at || Date.now());
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
 
@@ -39,7 +70,7 @@ const BarangMasuk = () => {
         const matchesSearch = (
             (t.pengajuanNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (t.customsDocNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (t.sender || t.supplier || '').toLowerCase().includes(searchTerm.toLowerCase())
+            (t.sender || t.supplier || t.shipper || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
 
         return matchesDate && matchesSearch;
@@ -83,6 +114,7 @@ const BarangMasuk = () => {
                 unit: item.unit || item.uom,
                 quantity: item.quantity,
                 price: item.price,
+                currency: item.currency,
                 totalPrice: item.totalPrice || (Number(item.quantity) * Number(item.price))
             }))
         );
@@ -110,7 +142,8 @@ const BarangMasuk = () => {
             customsDocNumber: t.customsDocNumber,
             customsDocDate: t.customsDocDate,
             sender,
-            invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
+            itemCurrency: item.currency || t.currency || t.invoiceCurrency || t.invoice_currency || 'IDR',
+            invoiceCurrency: t.invoiceCurrency || t.invoice_currency || t.currency || 'IDR',
             // item-level fields
             itemCode: item.itemCode || item.item_code || '-',
             hsCode: item.hsCode || item.hs_code || '-',
@@ -122,7 +155,6 @@ const BarangMasuk = () => {
             nilaiBarang: Number(item.totalPrice) || (Number(item.quantity) * Number(item.price)) || Number(item.value) || 0,
             // jumlahBarang = JML = jumlah/qty item (kolom JML di PackageItemManager)
             jumlahBarang: Number(item.quantity) || 0,
-            itemCurrency: item.currency || t.invoiceCurrency || 'IDR',
             nominalBarang: Number(item.price) || (Number(item.value) / (Number(item.quantity) || 1)) || 0,
         }));
     });
