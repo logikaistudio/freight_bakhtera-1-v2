@@ -184,7 +184,9 @@ const PengajuanManagement = () => {
 
         const pengajuanData = {
             ...formData,
-            date: formData.submissionDate || new Date().toISOString().split('T')[0],
+            // Map itemDate to 'date' column which is used as transaction/item date in reports
+            date: formData.itemDate || formData.submissionDate || new Date().toISOString().split('T')[0],
+            submissionDate: formData.submissionDate || new Date().toISOString().split('T')[0],
             status: 'quotation',
             documentStatus: 'pengajuan', // Default status
             customsStatus: 'pending'

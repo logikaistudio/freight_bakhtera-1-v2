@@ -165,6 +165,7 @@ export const DataProvider = ({ children }) => {
             ...q,
             quotationNumber: q.quotation_number,
             submissionDate: q.submission_date || q.date,
+            itemDate: q.date, // Map date column to itemDate for UI consistency
             documentStatus: q.document_status,
             customsStatus: q.customs_status,
             bcDocumentNumber: q.bc_document_number,
@@ -176,6 +177,17 @@ export const DataProvider = ({ children }) => {
             // BL / AWB fields
             blNumber: q.bl_number || null,
             blDate: q.bl_date || null,
+            // Invoice / Currency fields
+            invoiceNumber: q.invoice_number || null,
+            invoiceValue: q.invoice_value || null,
+            invoiceCurrency: q.invoice_currency || 'IDR',
+            exchangeRate: q.exchange_rate || null,
+            exchangeRateDate: q.exchange_rate_date || null,
+            // Source Reference Fields
+            sourcePengajuanId: q.source_pengajuan_id || null,
+            sourcePengajuanNumber: q.source_pengajuan_number || null,
+            sourceBcDocumentNumber: q.source_bc_document_number || null,
+            sourceBcDocumentDate: q.source_bc_document_date || null,
             // Pricing & Services fields
             services: q.services || null,
             customCosts: q.custom_costs || null,
@@ -2002,6 +2014,19 @@ export const DataProvider = ({ children }) => {
             title: quotation.title || null,
             bl_number: quotation.blNumber || null,
             bl_date: quotation.blDate || null,
+            
+            // Invoice / Currency fields
+            invoice_number: quotation.invoiceNumber || null,
+            invoice_value: quotation.invoiceValue ? Number(quotation.invoiceValue) : null,
+            invoice_currency: quotation.invoiceCurrency || 'IDR',
+            exchange_rate: quotation.exchangeRate ? Number(quotation.exchangeRate) : null,
+            exchange_rate_date: quotation.exchangeRateDate || null,
+
+            // Source Reference Fields
+            source_pengajuan_id: quotation.sourcePengajuanId || null,
+            source_pengajuan_number: quotation.sourcePengajuanNumber || null,
+            source_bc_document_number: quotation.sourceBcDocumentNumber || null,
+            source_bc_document_date: quotation.sourceBcDocumentDate || null,
 
             // Dates
             date: quotation.date || new Date().toISOString().split('T')[0],
