@@ -59,7 +59,7 @@ const BarangKeluar = () => {
     };
 
     // Flatten: one row per item (same pattern as BarangMasuk)
-    const flatRows = filteredTransactions.flatMap(t => {
+    const flatRows = filteredTransactions.flatMap((t, tIdx) => {
         const quot = getQuotation(t.pengajuanNumber);
         // BL/AWB dari quotation outbound
         const blNumber = quot?.blNumber || quot?.bl_number || '-';
@@ -92,7 +92,8 @@ const BarangKeluar = () => {
 
         return items.map((item, itemIdx) => ({
             _transaction: t,
-            _itemSeqNo: itemIdx + 1,
+            _submissionSeqNo: tIdx + 1,        // 1-based submission sequence number
+            _itemSeqNo: itemIdx + 1,           // 1-based item sequence number within submission
             blNumber,
             blDate,
             ownerName,
@@ -105,8 +106,8 @@ const BarangKeluar = () => {
             destination: t.destination || '-',
             invoiceCurrency: t.invoiceCurrency || t.currency || 'IDR',
             // item-level fields
-            itemCode: item.itemCode || item.item_code || t.itemCode || t.item_code || '-',
-            hsCode: item.hsCode || item.hs_code || t.hsCode || t.hs_code || '-',
+            itemCode: item.itemCode || item.item_code || '-',
+            hsCode: item.hsCode || item.hs_code || '-',
             itemName: item.assetName || item.goodsType || item.itemName || item.name || item.item_name || t.assetName || '-',
             unit: item.unit || t.unit || '-',
             quantity: Number(item.quantity) || 0,
@@ -129,7 +130,8 @@ const BarangKeluar = () => {
         ];
 
         const xlsColumns = [
-            { header: 'No', key: '_itemSeqNo', width: 5, align: 'center' },
+            { header: 'No', key: '_submissionSeqNo', width: 5, align: 'center' },
+            { header: 'No Urut Item', key: '_itemSeqNo', width: 12, align: 'center' },
             { header: 'No. Bukti Pengeluaran (BL/AWB)', key: 'blNumber', width: 28 },
             { header: 'Tgl Bukti Pengeluaran', key: 'blDateStr', width: 18, align: 'center' },
             { header: 'No. Pengajuan', key: 'pengajuanNumber', width: 20 },
@@ -158,9 +160,10 @@ const BarangKeluar = () => {
     // Export Main Table to CSV
     const handleExportCSV = () => {
         const columns = [
-            { key: '_itemSeqNo', header: 'No' },
-            { key: 'blNumber', header: 'No. Bukti Pengeluaran (BL/AWB)' },
-            { key: 'blDateStr', header: 'Tgl Bukti Pengeluaran' },
+            { key: '_submissionSeqNo', header: 'No' },
+            { key: '_itemSeqNo', header: 'No Urut Item' },
+            { key: 'blNumber', header: 'No. Bukti Pengeluaran' },
+            { key: 'blDateStr', header: 'Tgl Bukti' },
             { key: 'pengajuanNumber', header: 'No. Pengajuan' },
             { key: 'customsDocType', header: 'Jenis Dok' },
             { key: 'customsDocNumber', header: 'No. Pabean' },
@@ -260,6 +263,7 @@ const BarangKeluar = () => {
                         <thead className="bg-accent-orange/10 sticky top-0 z-10">
                             <tr>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No Urut Item</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-32">No. Bukti Pengeluaran</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-24">Tgl Bukti</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider" style={{ minWidth: '384px' }}>Nama Pemilik</th>
@@ -287,7 +291,8 @@ const BarangKeluar = () => {
                             ) : (
                                 flatRows.map((row, idx) => (
                                     <tr key={idx} className="hover:bg-dark-surface/50 transition-colors">
-                                        <td className="px-2 py-1.5 text-center font-bold text-white text-xs">{row._itemSeqNo}</td>
+                                        <td className="px-2 py-1.5 text-center font-bold text-white text-xs">{row._submissionSeqNo}</td>
+                                        <td className="px-2 py-1.5 text-center text-silver text-xs">{row._itemSeqNo}</td>
                                         <td className="px-2 py-1.5 text-accent-orange font-mono font-medium whitespace-nowrap text-xs max-w-[128px] truncate">
                                             {row.blNumber !== '-' ? row.blNumber : <span className="text-silver-dark italic">-</span>}
                                         </td>

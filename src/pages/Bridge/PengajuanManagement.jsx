@@ -154,88 +154,76 @@ const PengajuanManagement = () => {
         customsStatus: 'pending'
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('🚀 handleSubmit called');
-        console.log('📋 Current formData:', formData);
-        console.log('📦 Packages:', formData.packages);
-        console.log('📦 Packages length:', formData.packages.length);
-
+        
         if (formData.packages.length === 0) {
-            console.error('❌ Validation failed: No packages');
-            alert('❌ VALIDASI GAGAL:\nHarap tambahkan minimal satu package!\n\nKlik "Tambah Package" terlebih dahulu.');
+            alert('❌ VALIDASI GAGAL:\nHarap tambahkan minimal satu package!');
             return;
         }
-
-        // Check if at least one package has items
-        console.log('🔍 Checking if packages have items...');
-        formData.packages.forEach((pkg, idx) => {
-            console.log(`  Package ${idx + 1} (${pkg.packageNumber}):`, pkg.items?.length || 0, 'items');
-        });
 
         const hasItems = formData.packages.some(pkg => pkg.items && pkg.items.length > 0);
         if (!hasItems) {
-            console.error('❌ Validation failed: No items in packages');
-            alert('❌ VALIDASI GAGAL:\nMinimal satu package harus berisi barang!\n\n1. Expand package dengan klik chevron\n2. Klik "Tambah Barang" dalam package\n3. Isi minimal nama barang');
+            alert('❌ VALIDASI GAGAL:\nMinimal satu package harus berisi barang!');
             return;
         }
 
-        console.log('✅ Validation passed - packages:', formData.packages.length, 'items:', formData.packages.reduce((sum, pkg) => sum + (pkg.items?.length || 0), 0));
-
         const pengajuanData = {
             ...formData,
-            // Map itemDate to 'date' column which is used as transaction/item date in reports
             date: formData.itemDate || formData.submissionDate || new Date().toISOString().split('T')[0],
             submissionDate: formData.submissionDate || new Date().toISOString().split('T')[0],
             status: 'quotation',
-            documentStatus: 'pengajuan', // Default status
+            documentStatus: 'pengajuan',
             customsStatus: 'pending'
         };
 
         console.log('📝 Sending pengajuan data:', pengajuanData);
-        console.log('📝 Sending pengajuan data:', pengajuanData);
-        if (formData.id) {
-            updateQuotation(formData.id, pengajuanData);
-            console.log('✅ updateQuotation called');
-        } else {
-            addQuotation(pengajuanData);
-            console.log('✅ addQuotation called');
+        
+        try {
+            let result;
+            if (formData.id) {
+                result = await updateQuotation(formData.id, pengajuanData);
+            } else {
+                result = await addQuotation(pengajuanData);
+            }
+
+            if (result === false) return;
+
+            setFormData({
+                id: null,
+                submissionDate: new Date().toISOString().split('T')[0],
+                customer: '',
+                type: 'inbound',
+                bcDocType: '',
+                shipper: '',
+                origin: '',
+                destination: '',
+                receiver: '',
+                itemDate: '',
+                packages: [],
+                documents: [],
+                notes: '',
+                blNumber: '',
+                blDate: '',
+                invoiceNumber: '',
+                invoiceValue: '',
+                invoiceCurrency: 'IDR',
+                exchangeRate: '',
+                exchangeRateDate: '',
+                documentStatus: 'pengajuan',
+                bcDocumentNumber: '',
+                bcSupportingDocuments: [],
+                rejectionReason: '',
+                rejectionDate: '',
+                pic: '',
+                customsStatus: 'pending'
+            });
+            setShowForm(false);
+            console.log('✅ Form reset complete');
+        } catch (err) {
+            console.error('❌ Error in handleSubmit:', err);
         }
-
-        // Reset form
-        setFormData({
-            id: null,
-            submissionDate: new Date().toISOString().split('T')[0],
-            customer: '',
-            type: 'inbound',
-            bcDocType: '',
-
-            shipper: '',
-            origin: '',
-            destination: '',
-            receiver: '',
-            itemDate: '',
-            packages: [],
-            documents: [],
-            notes: '',
-            blNumber: '',
-            blDate: '',
-            invoiceNumber: '',
-            invoiceValue: '',
-            invoiceCurrency: 'IDR',
-            exchangeRate: '',
-            exchangeRateDate: '',
-            documentStatus: 'pengajuan',
-            bcDocumentNumber: '',
-            bcSupportingDocuments: [],
-            rejectionReason: '',
-            rejectionDate: '',
-            pic: '',
-            customsStatus: 'pending'
-        });
-        setShowForm(false);
-        alert('Pengajuan berhasil dibuat!');
-        console.log('✅ Form reset complete');
     };
 
     const handleConfirm = (quotationId) => {

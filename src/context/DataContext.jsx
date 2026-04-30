@@ -1998,7 +1998,10 @@ export const DataProvider = ({ children }) => {
 
         // Count existing quotations for the same month/year to determine Sequence?
         // Current logic uses total length. Better might be to count filtered list, but stick to length + 1 for now to avoid complexity change unless requested.
-        const quotationNumber = `BRG${year}${month}-${String(quotations.length + 1).padStart(6, '0')}`;
+        // Generate a more robust quotation number to avoid 409 Conflict
+        const randomSuffix = Math.random().toString(36).substring(7).toUpperCase().slice(0, 4);
+        const seqPart = String(quotations.length + 1).padStart(4, '0');
+        const quotationNumber = `BRG${year}${month}-${seqPart}-${randomSuffix}`;
 
         const newQuotation = {
             // ID and basic info
@@ -2105,10 +2108,11 @@ export const DataProvider = ({ children }) => {
         if (error) {
             console.error('❌ Error adding quotation:', error);
             alert(`Failed to add quotation: ${error.message}`);
-            return;
+            return false;
         }
 
         console.log('✅ Quotation created successfully:', quotationNumber);
+        alert(`Pengajuan ${quotationNumber} berhasil dibuat!`);
 
         // Fix: Use the actual data returned from DB (with correct ID) but merge with input to keep UI helpers if any
         const savedData = data[0];
@@ -2519,10 +2523,11 @@ export const DataProvider = ({ children }) => {
         if (updateError) {
             console.error('❌ Error updating quotation:', updateError);
             alert(`Failed to update quotation: ${updateError.message}`);
-            return;
+            return false;
         }
 
         console.log('✅ Quotation updated successfully');
+        alert('Data pengajuan berhasil diperbarui!');
 
         // Check if status changed to approved
         if (updatedData.documentStatus === 'approved' && previousStatus !== 'approved') {
@@ -2797,6 +2802,7 @@ export const DataProvider = ({ children }) => {
             // We will skip auto-sync to DB for now to avoid errors, assuming approval is the main event.
             console.log('📝 Inventory sync for BC update skipped for DB performance (Todo)');
         }
+        return true;
     };
 
     const approveBC = (bcDocId, approvedBy) => {

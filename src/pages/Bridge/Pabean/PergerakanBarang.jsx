@@ -99,13 +99,14 @@ const PergerakanBarang = () => {
 
     // Flatten Inbound items if they are grouped
     const allInboundItems = useMemo(() => {
-        return inboundTransactions.flatMap(t => {
+        return inboundTransactions.flatMap((t, tIdx) => {
             if (t.items && t.items.length > 0) {
                 return t.items.map((item, itemIdx) => ({
                     ...t,
                     ...item, // Flatten item details
                     // Ensure essential IDs are preserved and fields are prioritized
                     inboundId: t.id,
+                    submissionSeqNo: tIdx + 1,
                     itemIdx: itemIdx,
                     // Strick Mapping: PREFER item level data. Do NOT fallback to 't' (header) easily for multi-item arrays.
                     assetName: item.itemName || item.name || item.assetName || item.description,
@@ -118,6 +119,7 @@ const PergerakanBarang = () => {
             return [{
                 ...t,
                 inboundId: t.id,
+                submissionSeqNo: tIdx + 1,
                 originalQty: Number(t.quantity) || 0,
                 noUrut: 1
             }];
@@ -248,10 +250,11 @@ const PergerakanBarang = () => {
     // Export Handlers
     const handleExportCSV = () => {
         const columns = [
+            { key: 'submissionSeqNo', header: 'No' },
             { key: 'pengajuanNumber', header: 'No. Pengajuan' },
             { key: 'inboundDocType', header: 'Jenis BC Masuk' },
             { key: 'customsDocNumber', header: 'No. Pabean' },
-            { key: 'noUrut', header: 'No. Urut' },
+            { key: 'noUrut', header: 'No. Urut Item' },
             { key: 'date', header: 'Tgl. Masuk' },
             { key: 'outboundDocType', header: 'Jenis BC Keluar' },
             { key: 'latestOutboundDate', header: 'Tgl. Keluar' },
@@ -259,7 +262,7 @@ const PergerakanBarang = () => {
             { key: 'assetName', header: 'Nama Barang' },
             { key: 'qtyMasuk', header: 'Jml Masuk' },
             { key: 'qtyKeluar', header: 'Jml Keluar' },
-            { key: 'qtyAdjustment', header: 'Penyesuaian (adjustment)' },
+            { key: 'qtyAdjustment', header: 'Penyesuaian' },
             { key: 'qtySisa', header: 'Saldo Akhir' },
             { key: 'unit', header: 'Satuan' },
             { key: 'keterangan', header: 'Keterangan' }
@@ -285,11 +288,11 @@ const PergerakanBarang = () => {
             { value: 'Pabean - Mutasi Barang', style: 'title' }
         ];
         const xlsColumns = [
-            { header: 'No', key: 'no', width: 5, align: 'center' },
+            { header: 'No', key: 'submissionSeqNo', width: 5, align: 'center' },
             { header: 'No. Pengajuan', key: 'pengajuanNumber', width: 20 },
             { header: 'Kode BC Masuk', key: 'inboundDocType', width: 15, align: 'center' },
             { header: 'No. Pabean', key: 'customsDocNumber', width: 20 },
-            { header: 'No. Urut', key: 'noUrut', width: 8, align: 'center' },
+            { header: 'No. Urut Item', key: 'noUrut', width: 12, align: 'center' },
             { header: 'Tgl. Masuk', key: 'date', width: 12, align: 'center' },
             { header: 'Kode BC Keluar', key: 'outboundDocType', width: 15, align: 'center' },
             { header: 'Tgl. Keluar', key: 'latestOutboundDate', width: 12, align: 'center' },
@@ -303,9 +306,9 @@ const PergerakanBarang = () => {
             { header: 'Keterangan', key: 'keterangan', width: 25 },
         ];
 
-        const exportData = filteredData.map((item, idx) => ({
+        const exportData = filteredData.map(item => ({
             ...item,
-            no: idx + 1,
+            submissionSeqNo: item.submissionSeqNo,
             noUrut: item.noUrut, // Explicitly include
             date: formatDate(item.date),
             latestOutboundDate: formatDate(item.latestOutboundDate)
@@ -419,7 +422,7 @@ const PergerakanBarang = () => {
                                 <th className="px-3 py-1.5 text-left text-[11px] font-bold text-silver whitespace-nowrap">No. Pengajuan</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-accent-cyan whitespace-nowrap">Kode BC Masuk</th>
                                 <th className="px-3 py-1.5 text-left text-[11px] font-bold text-silver whitespace-nowrap">No. Pabean</th>
-                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">No. Urut</th>
+                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">No. Urut Item</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Tgl. Masuk</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-accent-purple whitespace-nowrap">Kode BC Keluar</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Tgl. Keluar</th>
@@ -445,7 +448,7 @@ const PergerakanBarang = () => {
                             ) : (
                                 filteredData.map((item, idx) => (
                                     <tr key={idx} className="border-t border-dark-border hover:bg-dark-surface/50">
-                                        <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">{idx + 1}</td>
+                                        <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">{item.submissionSeqNo}</td>
                                         <td className="px-3 py-1 text-[11px] text-silver-light font-medium whitespace-nowrap">{item.pengajuanNumber || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-center text-accent-cyan font-medium whitespace-nowrap">{item.inboundDocType || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-silver-light whitespace-nowrap">{item.customsDocNumber || '-'}</td>
