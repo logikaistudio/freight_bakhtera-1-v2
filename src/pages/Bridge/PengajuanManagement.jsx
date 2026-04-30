@@ -1432,6 +1432,7 @@ const PengajuanManagement = () => {
                             onChange={(packages) => setFormData({ ...formData, packages })}
                             itemMaster={itemMaster}
                             readOnly={formData.type === 'outbound' && sourcePengajuanId} // Optional: make it read-only for outbound
+                            defaultCurrency={formData.invoiceCurrency}
                         />
                     )}
 

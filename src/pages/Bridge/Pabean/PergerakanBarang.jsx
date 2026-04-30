@@ -106,7 +106,7 @@ const PergerakanBarang = () => {
                     ...item, // Flatten item details
                     // Ensure essential IDs are preserved and fields are prioritized
                     inboundId: t.id,
-                    submissionSeqNo: tIdx + 1,
+                    submissionSeqNo: itemIdx === 0 ? tIdx + 1 : '',
                     itemIdx: itemIdx,
                     // Strick Mapping: PREFER item level data. Do NOT fallback to 't' (header) easily for multi-item arrays.
                     assetName: item.itemName || item.name || item.assetName || item.description,
@@ -422,10 +422,8 @@ const PergerakanBarang = () => {
                                 <th className="px-3 py-1.5 text-left text-[11px] font-bold text-silver whitespace-nowrap">No. Pengajuan</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-accent-cyan whitespace-nowrap">Kode BC Masuk</th>
                                 <th className="px-3 py-1.5 text-left text-[11px] font-bold text-silver whitespace-nowrap">No. Pabean</th>
-                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">No. Urut Item</th>
-                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Tgl. Masuk</th>
-                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-accent-purple whitespace-nowrap">Kode BC Keluar</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Tgl. Keluar</th>
+                                <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">No. Urut Item</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Kode Barang</th>
                                 <th className="px-3 py-1.5 text-left text-[11px] font-bold text-silver whitespace-nowrap">Nama Barang</th>
                                 <th className="px-3 py-1.5 text-center text-[11px] font-bold text-silver whitespace-nowrap">Satuan</th>
@@ -452,14 +450,10 @@ const PergerakanBarang = () => {
                                         <td className="px-3 py-1 text-[11px] text-silver-light font-medium whitespace-nowrap">{item.pengajuanNumber || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-center text-accent-cyan font-medium whitespace-nowrap">{item.inboundDocType || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-silver-light whitespace-nowrap">{item.customsDocNumber || '-'}</td>
-                                        <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">{item.noUrut || '-'}</td>
-                                        <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">
-                                            {formatDate(item.date)}
-                                        </td>
-                                        <td className="px-3 py-1 text-[11px] text-center text-accent-purple font-medium whitespace-nowrap">{item.outboundDocType || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">
                                             {formatDate(item.latestOutboundDate)}
                                         </td>
+                                        <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">{item.noUrut || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-silver-light font-mono whitespace-nowrap">{item.itemCode || '-'}</td>
                                         <td className="px-3 py-1 text-[11px] text-silver-light whitespace-nowrap truncate max-w-[200px]">{item.assetName}</td>
                                         <td className="px-3 py-1 text-[11px] text-center text-silver-light whitespace-nowrap">{item.unit || 'pcs'}</td>

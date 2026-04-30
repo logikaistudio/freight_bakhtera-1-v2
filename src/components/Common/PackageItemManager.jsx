@@ -4,7 +4,7 @@ import Button from './Button';
 import { useData } from '../../context/DataContext';
 import { formatCurrency, parseCurrency } from '../../utils/currencyFormatter';
 
-const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
+const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCurrency = 'IDR' }) => {
     const { itemMaster = [], hsCodes = [], addItemCode } = useData();
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -16,7 +16,7 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
         quantity: '',
         unit: 'pcs',
         price: '', // Nominal
-        currency: 'IDR',
+        currency: defaultCurrency,
         exchangeRate: '1',
         totalPrice: '', // Calculated
         notes: ''
@@ -24,6 +24,13 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
 
     const unitOptions = ['pcs', 'kg', 'ton', 'm', 'm2', 'm3', 'set', 'box', 'roll', 'btl'];
     const currencyOptions = ['IDR', 'USD', 'EUR', 'SGD', 'CNY', 'JPY'];
+
+    // Sync currency with header default
+    useEffect(() => {
+        if (!editingId) {
+            setFormData(prev => ({ ...prev, currency: defaultCurrency }));
+        }
+    }, [defaultCurrency, editingId]);
 
     // Auto-fill Logic
     useEffect(() => {
@@ -99,11 +106,13 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
         setFormData(prev => ({
             ...prev,
             itemCode: '',
+            hsCode: '',
             name: '',
             quantity: '',
-            price: '', // Reset to empty string
+            price: '',
             totalPrice: '',
-            // Keep HS Code, Unit, Currency, Rate
+            notes: '',
+            currency: defaultCurrency
         }));
         // Don't close form automatically to allow rapid entry if adding new
         if (editingId) setShowForm(false);
@@ -245,7 +254,7 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false }) => {
                                         <option value="">Pilih...</option>
                                         {itemMaster.map(i => (
                                             <option key={i.id} value={i.itemCode}>
-                                                {i.itemCode} {i.itemType ? `- ${i.itemType}` : ''}
+                                                {i.itemCode}
                                             </option>
                                         ))}
                                     </select>

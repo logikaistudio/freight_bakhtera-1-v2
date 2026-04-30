@@ -92,7 +92,7 @@ const BarangKeluar = () => {
 
         return items.map((item, itemIdx) => ({
             _transaction: t,
-            _submissionSeqNo: tIdx + 1,        // 1-based submission sequence number
+            _submissionSeqNo: itemIdx === 0 ? tIdx + 1 : '',        // Only show for first item
             _itemSeqNo: itemIdx + 1,           // 1-based item sequence number within submission
             blNumber,
             blDate,
@@ -114,6 +114,8 @@ const BarangKeluar = () => {
             value: Number(item.value) || 0,
             // jumlahBarang = JML = kolom JML di PackageItemManager
             jumlahBarang: Number(item.quantity) || 0,
+            itemCurrency: item.currency || t.invoiceCurrency || 'IDR',
+            nominalBarang: Number(item.price) || (Number(item.value) / (Number(item.quantity) || 1)) || 0,
             // nilaiBarang = TOTAL = qty × price (kolom Total di PackageItemManager)
             nilaiBarang: Number(item.totalPrice) || (Number(item.quantity) * Number(item.price)) || Number(item.value) || 0,
         }));
@@ -145,6 +147,8 @@ const BarangKeluar = () => {
             { header: 'Nama Barang (Item)', key: 'itemName', width: 40 },
             { header: 'Satuan', key: 'unit', width: 12 },
             { header: 'Jml Barang', key: 'jumlahBarang', width: 14, align: 'right', summary: true },
+            { header: 'Kurs', key: 'itemCurrency', width: 10, align: 'center' },
+            { header: 'Nominal', key: 'nominalBarang', width: 15, align: 'right' },
             { header: 'Nilai Barang', key: 'nilaiBarang', width: 16, align: 'right', summary: true },
         ];
 
@@ -175,6 +179,8 @@ const BarangKeluar = () => {
             { key: 'itemName', header: 'Nama Barang (Item)' },
             { key: 'unit', header: 'Satuan' },
             { key: 'jumlahBarang', header: 'Jml Barang' },
+            { key: 'itemCurrency', header: 'Kurs' },
+            { key: 'nominalBarang', header: 'Nominal' },
             { key: 'nilaiBarang', header: 'Nilai Barang' },
         ];
 
@@ -263,7 +269,6 @@ const BarangKeluar = () => {
                         <thead className="bg-accent-orange/10 sticky top-0 z-10">
                             <tr>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No</th>
-                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No Urut Item</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-32">No. Bukti Pengeluaran</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-24">Tgl Bukti</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider" style={{ minWidth: '384px' }}>Nama Pemilik</th>
@@ -272,11 +277,14 @@ const BarangKeluar = () => {
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">No. Pabean</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-22">Tgl Pabean</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider" style={{ minWidth: '384px' }}>Penerima</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-8">No Urut Item</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode Barang</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-24">Kode HS</th>
                                 <th className="px-2 py-2 text-left text-xs font-semibold text-silver uppercase tracking-wider w-36">Nama Barang</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-14">Satuan</th>
                                 <th className="px-2 py-2 text-right text-xs font-semibold text-silver uppercase tracking-wider w-20">Jml Barang</th>
+                                <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-14">Kurs</th>
+                                <th className="px-2 py-2 text-right text-xs font-semibold text-silver uppercase tracking-wider w-24">Nominal</th>
                                 <th className="px-2 py-2 text-right text-xs font-semibold text-silver uppercase tracking-wider w-24">Nilai Barang</th>
                                 <th className="px-2 py-2 text-center text-xs font-semibold text-silver uppercase tracking-wider w-20">Aksi</th>
                             </tr>
@@ -292,7 +300,6 @@ const BarangKeluar = () => {
                                 flatRows.map((row, idx) => (
                                     <tr key={idx} className="hover:bg-dark-surface/50 transition-colors">
                                         <td className="px-2 py-1.5 text-center font-bold text-white text-xs">{row._submissionSeqNo}</td>
-                                        <td className="px-2 py-1.5 text-center text-silver text-xs">{row._itemSeqNo}</td>
                                         <td className="px-2 py-1.5 text-accent-orange font-mono font-medium whitespace-nowrap text-xs max-w-[128px] truncate">
                                             {row.blNumber !== '-' ? row.blNumber : <span className="text-silver-dark italic">-</span>}
                                         </td>
@@ -311,6 +318,7 @@ const BarangKeluar = () => {
                                         <td className="px-2 py-1.5 text-silver text-xs">
                                             <div className="line-clamp-2" title={getFullPartnerName(row.receiver)}>{getFullPartnerName(row.receiver)}</div>
                                         </td>
+                                        <td className="px-2 py-1.5 text-center text-silver text-xs">{row._itemSeqNo}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.itemCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver font-mono whitespace-nowrap text-xs">{row.hsCode || '-'}</td>
                                         <td className="px-2 py-1.5 text-silver-light text-xs max-w-[144px] truncate whitespace-nowrap">{row.itemName}</td>
@@ -318,7 +326,11 @@ const BarangKeluar = () => {
                                         <td className="px-2 py-1.5 text-right text-silver-light font-medium text-xs whitespace-nowrap">
                                             {row.jumlahBarang ? Number(row.jumlahBarang).toLocaleString('id-ID') : '-'}
                                         </td>
-                                        <td className="px-2 py-1.5 text-right text-accent-green font-medium text-xs whitespace-nowrap">
+                                        <td className="px-2 py-1.5 text-center text-silver text-xs whitespace-nowrap">{row.itemCurrency}</td>
+                                        <td className="px-2 py-1.5 text-right text-silver-light font-medium text-xs whitespace-nowrap">
+                                            {row.nominalBarang ? Number(row.nominalBarang).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-right text-accent-orange font-medium text-xs whitespace-nowrap">
                                             {row.nilaiBarang ? Number(row.nilaiBarang).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '-'}
                                         </td>
                                         <td className="px-2 py-1.5 text-center">
