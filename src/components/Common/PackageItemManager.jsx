@@ -18,7 +18,8 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
         price: '', // Nominal
         currency: defaultCurrency,
         exchangeRate: '1',
-        totalPrice: '', // Calculated
+        totalPrice: '', // Calculated or manual
+        isManualTotal: false, // NEW: Toggle for manual total
         notes: ''
     });
 
@@ -46,6 +47,19 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
         }
     }, [formData.itemCode, itemMaster]);
 
+    // Auto-calculate Total Price
+    useEffect(() => {
+        if (!formData.isManualTotal) {
+            const qty = Number(formData.quantity) || 0;
+            const price = parseCurrency(formData.price) || 0;
+            const calculatedTotal = qty * price;
+            setFormData(prev => ({
+                ...prev,
+                totalPrice: calculatedTotal ? formatCurrency(calculatedTotal) : ''
+            }));
+        }
+    }, [formData.quantity, formData.price, formData.isManualTotal]);
+
     const calculateTotal = (qty, price) => {
         return (Number(qty) || 0) * (parseCurrency(price) || 0);
     };
@@ -60,7 +74,7 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
         const qty = Number(formData.quantity) || 0;
         const price = parseCurrency(formData.price) || 0;
         const rate = Number(formData.exchangeRate) || 1;
-        const total = qty * price;
+        const total = formData.isManualTotal ? (parseCurrency(formData.totalPrice) || 0) : (qty * price);
         const valueIDR = total * rate;
 
         // Auto-save new item code to database if manual and doesn't exist in master
@@ -92,6 +106,7 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
             price: price, // Store as number
             exchangeRate: rate,
             totalPrice: total,
+            isManualTotal: formData.isManualTotal,
             value: valueIDR
         };
 
@@ -111,6 +126,7 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
             quantity: '',
             price: '',
             totalPrice: '',
+            isManualTotal: false,
             notes: '',
             currency: defaultCurrency
         }));
@@ -130,7 +146,8 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
             price: rawPrice ? formatCurrency(rawPrice) : '', // Display as formatted string
             currency: item.currency || 'IDR',
             exchangeRate: item.exchangeRate || '1',
-            totalPrice: item.totalPrice || (item.quantity * item.price) || '',
+            totalPrice: item.totalPrice ? formatCurrency(item.totalPrice) : formatCurrency(item.quantity * rawPrice),
+            isManualTotal: item.isManualTotal || false,
             notes: item.notes || ''
         });
         setEditingId(item.id);
@@ -148,7 +165,7 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
         setEditingId(null);
         setManualItemCode(false); // Reset manual input mode
         setFormData({
-            itemCode: '', hscode: '', name: '', quantity: '', unit: 'pcs', price: '', currency: 'IDR', exchangeRate: '1', totalPrice: '', notes: ''
+            itemCode: '', hsCode: '', name: '', quantity: '', unit: 'pcs', price: '', currency: 'IDR', exchangeRate: '1', totalPrice: '', isManualTotal: false, notes: ''
         });
         setShowForm(false);
     };
@@ -334,6 +351,37 @@ const PackageItemManager = ({ items = [], onChange, readOnly = false, defaultCur
                                         setFormData({ ...formData, price: isNaN(num) || num === 0 ? '' : formatCurrency(num) });
                                     }}
                                     placeholder="0"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-xs text-silver-dark">Total Nominal</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, isManualTotal: !formData.isManualTotal })}
+                                        className="text-[10px] text-accent-blue hover:text-blue-400 transition-colors"
+                                    >
+                                        {formData.isManualTotal ? '✏️ Manual' : '🤖 Auto'}
+                                    </button>
+                                </div>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    className={`w-full text-sm p-2 border rounded focus:border-accent-blue ${!formData.isManualTotal ? 'bg-gray-100/50 text-gray-500 border-gray-200 cursor-not-allowed' : 'bg-dark-bg border-dark-border'}`}
+                                    value={formData.totalPrice}
+                                    onChange={e => {
+                                        if (!formData.isManualTotal) return;
+                                        const val = e.target.value.replace(/[^\d.,]/g, '');
+                                        setFormData({ ...formData, totalPrice: val });
+                                    }}
+                                    onBlur={e => {
+                                        if (!formData.isManualTotal) return;
+                                        const num = parseCurrency(e.target.value);
+                                        setFormData({ ...formData, totalPrice: isNaN(num) || num === 0 ? '' : formatCurrency(num) });
+                                    }}
+                                    placeholder="0"
+                                    readOnly={!formData.isManualTotal}
+                                    title={!formData.isManualTotal ? "Dihitung otomatis (Jml x Nominal). Klik 'Auto' untuk ubah ke manual." : "Isi total secara manual"}
                                 />
                             </div>
 
