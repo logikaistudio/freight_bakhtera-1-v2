@@ -1807,16 +1807,20 @@ const WarehouseInventory = () => {
                                                                     <>
                                                                         {/* Keluar Cols */}
                                                                         <td className="px-1 py-0 text-xs text-center bg-red-50">
-                                                                            <select
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                max={maxKeluar}
                                                                                 value={keluarQty}
-                                                                                onChange={(e) => handleItemChange(pkgIndex, itemIdx, 'mutationOutQty', parseInt(e.target.value) || 0)}
-                                                                                className={`w-12 px-1 py-0 text-xs border rounded text-center ${maxKeluar > 0 ? 'border-red-300 bg-white' : 'border-gray-300 bg-gray-200'}`}
+                                                                                onChange={(e) => {
+                                                                                    let val = parseInt(e.target.value) || 0;
+                                                                                    if (val < 0) val = 0;
+                                                                                    if (val > maxKeluar) val = maxKeluar;
+                                                                                    handleItemChange(pkgIndex, itemIdx, 'mutationOutQty', val);
+                                                                                }}
+                                                                                className={`w-14 px-1 py-0 text-xs border rounded text-center ${maxKeluar > 0 ? 'border-red-300 bg-white' : 'border-gray-300 bg-gray-200 cursor-not-allowed'}`}
                                                                                 disabled={maxKeluar === 0}
-                                                                            >
-                                                                                {[...Array(maxKeluar + 1).keys()].map(n => (
-                                                                                    <option key={n} value={n}>{n}</option>
-                                                                                ))}
-                                                                            </select>
+                                                                            />
                                                                         </td>
                                                                         <td className="px-1 py-0 text-xs text-center bg-red-50">
                                                                             <input type="date" className="w-[85px] px-0.5 py-0 text-[10px] border border-red-200 rounded"
@@ -1842,16 +1846,20 @@ const WarehouseInventory = () => {
 
                                                                         {/* Kembali Cols */}
                                                                         <td className="px-1 py-0 text-xs text-center bg-blue-50">
-                                                                            <select
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                max={maxKembali}
                                                                                 value={kembaliQty}
-                                                                                onChange={(e) => handleItemChange(pkgIndex, itemIdx, 'mutationInQty', parseInt(e.target.value) || 0)}
-                                                                                className={`w-12 px-1 py-0 text-xs border rounded text-center ${maxKembali > 0 ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-200'}`}
+                                                                                onChange={(e) => {
+                                                                                    let val = parseInt(e.target.value) || 0;
+                                                                                    if (val < 0) val = 0;
+                                                                                    if (val > maxKembali) val = maxKembali;
+                                                                                    handleItemChange(pkgIndex, itemIdx, 'mutationInQty', val);
+                                                                                }}
+                                                                                className={`w-14 px-1 py-0 text-xs border rounded text-center ${maxKembali > 0 ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-200 cursor-not-allowed'}`}
                                                                                 disabled={maxKembali === 0}
-                                                                            >
-                                                                                {[...Array(maxKembali + 1).keys()].map(n => (
-                                                                                    <option key={n} value={n}>{n}</option>
-                                                                                ))}
-                                                                            </select>
+                                                                            />
                                                                         </td>
                                                                         <td className="px-1 py-0 text-xs text-center bg-blue-50">
                                                                             <input type="date" className="w-[85px] px-0.5 py-0 text-[10px] border border-blue-200 rounded"
@@ -2066,16 +2074,20 @@ const WarehouseInventory = () => {
                                                                 {/* Mutation input (Unified) */}
                                                                 <td className={`px-2 py-0.5 text-xs text-center border-r border-red-100 dark:border-red-900/20 bg-red-50 dark:bg-red-900/10`}>
                                                                     <div className="flex flex-col items-center">
-                                                                        <select
+                                                                        <input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            max={maxMutasi}
                                                                             value={item.mutationQty || 0}
-                                                                            onChange={(e) => handleMutationItemChange(pkgIndex, itemIdx, 'mutationQty', parseInt(e.target.value) || 0)}
-                                                                            className={`w-14 px-1 py-0.5 text-xs text-center border rounded focus:ring-1 ${maxMutasi > 0 ? 'border-red-300 focus:ring-red-500 bg-white' : 'border-gray-300 bg-gray-200 cursor-not-allowed'}`}
+                                                                            onChange={(e) => {
+                                                                                let val = parseInt(e.target.value) || 0;
+                                                                                if (val < 0) val = 0;
+                                                                                if (val > maxMutasi) val = maxMutasi;
+                                                                                handleMutationItemChange(pkgIndex, itemIdx, 'mutationQty', val);
+                                                                            }}
+                                                                            className={`w-16 px-1 py-0.5 text-xs text-center border rounded focus:ring-1 ${maxMutasi > 0 ? 'border-red-300 focus:ring-red-500 bg-white' : 'border-gray-300 bg-gray-200 cursor-not-allowed'}`}
                                                                             disabled={maxMutasi === 0}
-                                                                        >
-                                                                            {[...Array(maxMutasi + 1).keys()].map(n => (
-                                                                                <option key={n} value={n}>{n}</option>
-                                                                            ))}
-                                                                        </select>
+                                                                        />
                                                                         <span className={`text-[9px] mt-0.5 text-red-500`}>Max: {maxMutasi}</span>
                                                                     </div>
                                                                 </td>
