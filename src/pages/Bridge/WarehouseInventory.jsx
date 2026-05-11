@@ -1109,13 +1109,15 @@ const WarehouseInventory = () => {
                 totalItems += itemQty;
                 const itemName = item.name || item.itemName;
 
-                // 1. Find outbound MUTATIONS (e.g. Pameran)
+                // 1. Find outbound MUTATIONS (semua lokasi non-warehouse/gudang)
                 const mutationsOut = mutationLogs.filter(m =>
                     (m.pengajuanId === pengajuanId || normalize(m.pengajuanNumber) === normalize(pengajuanNumber)) &&
                     normalize(m.itemCode) === normalize(item.itemCode) &&
                     normalize(m.packageNumber) === normalize(pkg.packageNumber) &&
                     (itemName ? (normalize(m.itemName) === normalize(itemName) || normalize(m.assetName) === normalize(itemName)) : true) &&
-                    (m.destination || '') && (isExhibitionLocation ? isExhibitionLocation(m.destination) : ((m.destination || '').toLowerCase() !== 'warehouse' && (m.destination || '').toLowerCase() !== 'gudang'))
+                    (m.destination || '') &&
+                    (m.destination || '').toLowerCase() !== 'warehouse' &&
+                    (m.destination || '').toLowerCase() !== 'gudang'
                 );
 
                 // 2. Find official OUTBOUND TRANSACTIONS (freight_outbound)
@@ -1144,14 +1146,13 @@ const WarehouseInventory = () => {
 
                 // Calculate totals
                 const totalMutationOut = mutationsOut.reduce((sum, m) => sum + (m.mutatedQty || 0), 0);
-                const totalOfficialOut = officialOutbound.reduce((sum, o) => sum + (o.quantity || 0), 0);
                 const totalReturned = returnMutations.reduce((sum, m) => sum + (m.mutatedQty || 0), 0);
 
-                // Net Pameran = Mutasi Keluar - Mutasi Balik
+                // Net barang di luar = keluar - kembali
                 const netAtPameran = Math.max(0, totalMutationOut - totalReturned);
 
-                // Remaining in Warehouse = Initial - (Net Pameran + Official Outbound)
-                const remainingInWarehouse = Math.max(0, itemQty - netAtPameran - totalOfficialOut);
+                // Remaining in Warehouse = Initial - Net di Luar (no double-count dari officialOutbound)
+                const remainingInWarehouse = Math.max(0, itemQty - netAtPameran);
 
                 itemsInWarehouse += remainingInWarehouse;
                 itemsAtPameran += netAtPameran;
@@ -1167,43 +1168,46 @@ const WarehouseInventory = () => {
 
     // Helper to calculate item location status (per individual item)
     const getIndividualItemStatus = (itemCode, packageNumber, itemName) => {
-        if (!selectedPengajuan) return { atPameran: 0, totalOutbound: 0, totalReturned: 0, officialOutbound: 0 };
+        if (!selectedPengajuan) return { atPameran: 0, totalOutbound: 0, totalReturned: 0, officialOutbound: 0, totalDeducted: 0 };
 
         const pengajuanNumber = selectedPengajuan.quotationNumber || selectedPengajuan.quotation_number;
         const pengajuanId = selectedPengajuan.id;
 
-        // 1. MUTATIONS (Pameran etc)
+        // Helper: is this destination "outside" (non-warehouse, non-gudang)?
+        const isOutsideDestination = (dest) => {
+            if (!dest) return false;
+            const d = dest.toString().toLowerCase().trim();
+            return d !== 'warehouse' && d !== 'gudang';
+        };
+
+        // 1. MUTATIONS KELUAR (any destination that is not warehouse/gudang)
         const outboundMutations = mutationLogs.filter(m =>
             (m.pengajuanId === pengajuanId || normalize(m.pengajuanNumber) === normalize(pengajuanNumber)) &&
             normalize(m.itemCode) === normalize(itemCode) &&
             (packageNumber ? normalize(m.packageNumber) === normalize(packageNumber) : true) &&
-            (m.destination || '') && (isExhibitionLocation ? isExhibitionLocation(m.destination) : ((m.destination || '').toLowerCase() !== 'warehouse' && (m.destination || '').toLowerCase() !== 'gudang'))
+            isOutsideDestination(m.destination)
         );
 
-        // 2. OFFICIAL OUTBOUND (freight_outbound)
-        // STRICT ISOLATION: Only match outbound if source reference explicitly points to THIS pengajuan
+        // 2. OFFICIAL OUTBOUND (freight_outbound) - used only for display/reporting, NOT for stock deduction
+        // to avoid double-counting with mutation logs
         const officialOutbound = outboundTransactions.filter(o => {
             const sourceRef = o.documents?.source_pengajuan_number || '';
             const docPackage = o.documents?.packageNumber;
 
-            // Item must match
             const isItemMatch = normalize(o.item_code) === normalize(itemCode);
             if (!isItemMatch) return false;
 
-            // STRICT Source Match: Must explicitly reference this pengajuan
             const matchSource = (normalize(sourceRef) === normalize(pengajuanNumber)) ||
                 (o.pengajuan_id === pengajuanId);
 
-            // Package match (optional, only if both have package info)
             const matchPackage = packageNumber && docPackage
                 ? normalize(docPackage) === normalize(packageNumber)
                 : true;
 
-            // STRICT: Must match source reference - no fallback to prevent data leakage between submissions
             return matchSource && matchPackage;
         });
 
-        // 3. RETURN MUTATIONS
+        // 3. RETURN MUTATIONS (destination = warehouse or gudang)
         const returnMutations = mutationLogs.filter(m =>
             (m.pengajuanId === pengajuanId || normalize(m.pengajuanNumber) === normalize(pengajuanNumber)) &&
             normalize(m.itemCode) === normalize(itemCode) &&
@@ -1216,20 +1220,16 @@ const WarehouseInventory = () => {
         const totalOfficialOut = officialOutbound.reduce((sum, o) => sum + (parseInt(o.quantity) || 0), 0);
         const totalReturned = returnMutations.reduce((sum, m) => sum + (parseInt(m.mutatedQty) || 0), 0);
 
+        // Net barang di luar = semua keluar - semua kembali
         const netAtPameran = Math.max(0, totalMutationOut - totalReturned);
 
-        // Debug Log
-        if (totalOfficialOut > 0) {
-            console.log(`✅ [${itemCode}] STOCK ADJUSTED: -${totalOfficialOut} from Outbound`);
-        }
-
         return {
-            atPameran: netAtPameran,
-            totalOutbound: totalMutationOut,
-            totalOfficialOut: totalOfficialOut,
+            atPameran: netAtPameran,             // barang sedang di luar gudang (semua lokasi)
+            totalOutbound: totalMutationOut,      // total pernah keluar
+            totalOfficialOut: totalOfficialOut,   // untuk display saja
             totalReturned,
-            // Convenience total for deduction
-            totalDeducted: netAtPameran + totalOfficialOut
+            // Untuk deduction stok: hanya pakai net dari mutation logs (tidak double-count outbound transactions)
+            totalDeducted: netAtPameran
         };
     };
 
