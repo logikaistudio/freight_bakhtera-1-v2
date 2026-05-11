@@ -692,18 +692,25 @@ const WarehouseInventory = () => {
             const item = newData.packages[pkgIndex].items[itemIndex];
             
             // Check max based on other identical items
+            const isWarehouseRow = String(item._replicaIndex).startsWith('warehouse');
             let sumOtherMutations = 0;
-            if (String(item._replicaIndex).startsWith('warehouse')) {
+            if (isWarehouseRow) {
                 newData.packages[pkgIndex].items.forEach((otherItem, otherIdx) => {
                     if (otherIdx !== itemIndex && otherItem._originalItemIdx === item._originalItemIdx && String(otherItem._replicaIndex).startsWith('warehouse')) {
                         sumOtherMutations += (parseInt(otherItem.mutationQty) || 0);
                     }
                 });
             }
-            const maxMutasiBase = item.inWarehouse || 0;
-            const maxMutasi = Math.max(0, maxMutasiBase - sumOtherMutations);
 
-            if (value > maxMutasi) {
+            const isToGudang = String(item.mutationLocation || 'Gudang').toLowerCase() === 'gudang';
+            const maxMutasiBase = item.inWarehouse || 0;
+            const maxRemutasi = item.atPameran || 0;
+
+            const maxMutasi = isWarehouseRow
+                ? Math.max(0, maxMutasiBase - sumOtherMutations)
+                : (isToGudang ? maxRemutasi : Math.max(0, maxMutasiBase - sumOtherMutations));
+
+            if (value !== '' && value > maxMutasi) {
                 value = maxMutasi;
             }
         }
@@ -2111,10 +2118,15 @@ const WarehouseInventory = () => {
                                                                             type="number"
                                                                             min="0"
                                                                             max={maxMutasi}
-                                                                            value={item.mutationQty || 0}
+                                                                            value={item.mutationQty !== undefined ? item.mutationQty : 0}
                                                                             onChange={(e) => {
-                                                                                let val = parseInt(e.target.value) || 0;
-                                                                                if (val < 0) val = 0;
+                                                                                const rawValue = e.target.value;
+                                                                                if (rawValue === '') {
+                                                                                    handleMutationItemChange(pkgIndex, itemIdx, 'mutationQty', '');
+                                                                                    return;
+                                                                                }
+                                                                                let val = parseInt(rawValue);
+                                                                                if (isNaN(val) || val < 0) val = 0;
                                                                                 if (val > maxMutasi) val = maxMutasi;
                                                                                 handleMutationItemChange(pkgIndex, itemIdx, 'mutationQty', val);
                                                                             }}
