@@ -570,8 +570,8 @@ const WarehouseInventory = () => {
                             _originalItem: item.itemCode,
                             _originalItemIdx: originalItemIdx,
                             _replicaIndex: g.destination,
-                            // mutationLocation represents where the item currently is (the source for remutation)
-                            mutationLocation: g.destination,
+                            // Default destination for returning from outside is Gudang
+                            mutationLocation: 'Gudang',
                             inWarehouse: 0,
                             atPameran: qtyAtDest,
                             maxMutationQty: 0,
@@ -2094,9 +2094,10 @@ const WarehouseInventory = () => {
                                                                         value={mutationLocation}
                                                                         onChange={(e) => handleMutationItemChange(pkgIndex, itemIdx, 'mutationLocation', e.target.value)}
                                                                         className="w-full px-1 py-0.5 text-xs border rounded bg-white text-center"
+                                                                        disabled={!isWarehouseRow}
                                                                     >
-                                                                        {/* For warehouse rows: show non-Gudang options only */}
-                                                                        {LOCATION_OPTIONS.filter(opt => isWarehouseRow ? opt.value.toLowerCase() !== 'gudang' : true).map(opt => (
+                                                                        {/* For warehouse rows: show non-Gudang options only. For remutation: show Gudang only. */}
+                                                                        {LOCATION_OPTIONS.filter(opt => isWarehouseRow ? opt.value.toLowerCase() !== 'gudang' : opt.value.toLowerCase() === 'gudang').map(opt => (
                                                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                                         ))}
                                                                         {isWarehouseRow && <option value="Outbound">Outbound</option>}
