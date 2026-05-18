@@ -9,7 +9,7 @@ import { exportToXLS } from '../../../utils/exportXLS';
 
 const PergerakanBarang = () => {
     const [searchParams] = useSearchParams();
-    const { inboundTransactions = [], quotations = [], mutationLogs = [], companySettings, updateInboundItem } = useData();
+    const { inboundTransactions = [], outboundTransactions = [], quotations = [], mutationLogs = [], companySettings, updateInboundItem } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -19,8 +19,8 @@ const PergerakanBarang = () => {
     const [editingRow, setEditingRow] = useState(null); // 'inboundId-itemIdx'
     const [editForm, setEditForm] = useState({ adjustment: 0, notes: '' });
 
-    // FLATTEN OUTBOUND TRANSACTIONS FROM QUOTATIONS (Source of Truth)
-    const outboundTransactions = useMemo(() => {
+    // FLATTEN OUTBOUND TRANSACTIONS FROM QUOTATIONS (Source of Truth for Plans)
+    const outboundQuotations = useMemo(() => {
         return quotations
             .filter(q => q.type === 'outbound' && ['submitted', 'approved', 'processed'].includes(q.outbound_status || q.documentStatus || q.document_status))
             .flatMap(q => {
@@ -70,22 +70,54 @@ const PergerakanBarang = () => {
         }
     };
 
-    // Prepare All Outbound Items (freight_outbound + mutationLogs)
-    // Matches logic in BarangKeluar.jsx
+    // Prepare All Outbound Items (freight_outbound + quotations + mutationLogs)
+    // Matches logic in BarangKeluar.jsx to prevent double counting
     const allOutboundItems = useMemo(() => {
-        // 1. From freight_outbound (Primary Source)
-        const primaryOutbound = outboundTransactions.map(t => ({
-            ...t,
-            itemCode: t.itemCode || t.item_code,
-            serialNumber: t.serialNumber || t.serial_number,
-            mutatedQty: Number(t.quantity) || 0,
-            date: t.date,
-            destination: t.destination,
-            bcDocType: t.bcDocType || t.customsDocType || t.customs_doc_type, // Prefer pre-formatted bcDocType
-            source: 'freight_outbound'
-        }));
+        const outMap = new Map();
 
-        // 2. From mutationLogs (Secondary - exclude Pameran/Warehouse)
+        // 1. From freight_outbound (Actual Outbound - Primary Source)
+        outboundTransactions.forEach((t, tIdx) => {
+            const items = t.items && t.items.length > 0 ? t.items : [{
+                itemCode: t.itemCode || t.item_code,
+                quantity: t.quantity || 0,
+            }];
+            items.forEach((item, itemIdx) => {
+                const key = `${t.pengajuanNumber || t.pengajuan_number}-${item.itemCode || item.item_code || t.itemCode}-${tIdx}-${itemIdx}`;
+                outMap.set(key, {
+                    ...t,
+                    itemCode: item.itemCode || item.item_code || t.itemCode || t.item_code,
+                    serialNumber: t.serialNumber || t.serial_number,
+                    mutatedQty: Number(item.quantity) || Number(t.quantity) || 0,
+                    date: t.date || t.created_at,
+                    destination: t.destination || t.receiver,
+                    bcDocType: t.bcDocType || t.customsDocType || t.customs_doc_type,
+                    source: 'freight_outbound'
+                });
+            });
+        });
+
+        // 2. From Quotations (Planned Outbound)
+        outboundQuotations.forEach((t, idx) => {
+            const pengajuanKey = t.pengajuanNumber || t.pengajuan_number;
+            // Prevent double counting if actual outbound already exists for this pengajuan
+            const hasActual = outboundTransactions.some(actual => (actual.pengajuanNumber || actual.pengajuan_number) === pengajuanKey);
+            
+            if (!hasActual) {
+                const key = `${pengajuanKey}-${t.itemCode || t.item_code}-plan-${idx}`;
+                outMap.set(key, {
+                    ...t,
+                    itemCode: t.itemCode || t.item_code,
+                    serialNumber: t.serialNumber || t.serial_number,
+                    mutatedQty: Number(t.quantity) || 0,
+                    date: t.date,
+                    destination: t.destination,
+                    bcDocType: t.bcDocType || t.customsDocType || t.customs_doc_type,
+                    source: 'freight_quotation'
+                });
+            }
+        });
+
+        // 3. From mutationLogs (Secondary - exclude Pameran/Warehouse)
         const secondaryOutbound = mutationLogs.filter(log => {
             const dest = (log.destination || '').toLowerCase();
             return dest && dest !== 'warehouse' && dest !== 'gudang' && dest !== DEFAULT_LOCATION.toLowerCase();
@@ -94,8 +126,8 @@ const PergerakanBarang = () => {
             source: 'mutation_log'
         }));
 
-        return [...primaryOutbound, ...secondaryOutbound];
-    }, [outboundTransactions, mutationLogs]);
+        return [...Array.from(outMap.values()), ...secondaryOutbound];
+    }, [outboundTransactions, outboundQuotations, mutationLogs]);
 
     // Flatten Inbound items if they are grouped
     const allInboundItems = useMemo(() => {
@@ -152,8 +184,9 @@ const PergerakanBarang = () => {
                     if (outSourcePengajuan !== inboundPengajuan) {
                         return false;
                     }
-                } else if (outItem.source === 'mutation_log') {
-                    // For mutation logs without source ref, match by pengajuanNumber field
+                } else {
+                    // If NO source reference (e.g. mutation_log, or legacy outbound without link),
+                    // match by pengajuanNumber field directly to link them back to the same parent document.
                     const outPengajuan = outItem.pengajuanNumber || outItem.pengajuan_number;
                     if (outPengajuan && outPengajuan !== inboundPengajuan) {
                         return false;
