@@ -77,23 +77,25 @@ const PergerakanBarang = () => {
 
         // 1. From freight_outbound (Actual Outbound - Primary Source)
         outboundTransactions.forEach((t, tIdx) => {
-            const items = t.items && t.items.length > 0 ? t.items : [{
+            const items = Array.isArray(t.items) && t.items.length > 0 ? t.items : [{
                 itemCode: t.itemCode || t.item_code,
                 quantity: t.quantity || 0,
             }];
-            items.forEach((item, itemIdx) => {
-                const key = `${t.pengajuanNumber || t.pengajuan_number}-${item.itemCode || item.item_code || t.itemCode}-${tIdx}-${itemIdx}`;
-                outMap.set(key, {
-                    ...t,
-                    itemCode: item.itemCode || item.item_code || t.itemCode || t.item_code,
-                    serialNumber: t.serialNumber || t.serial_number,
-                    mutatedQty: Number(item.quantity) || Number(t.quantity) || 0,
-                    date: t.date || t.created_at,
-                    destination: t.destination || t.receiver,
-                    bcDocType: t.bcDocType || t.customsDocType || t.customs_doc_type,
-                    source: 'freight_outbound'
+            if (Array.isArray(items)) {
+                items.forEach((item, itemIdx) => {
+                    const key = `${t.pengajuanNumber || t.pengajuan_number}-${item.itemCode || item.item_code || t.itemCode}-${tIdx}-${itemIdx}`;
+                    outMap.set(key, {
+                        ...t,
+                        itemCode: item.itemCode || item.item_code || t.itemCode || t.item_code,
+                        serialNumber: t.serialNumber || t.serial_number,
+                        mutatedQty: Number(item.quantity) || Number(t.quantity) || 0,
+                        date: t.date || t.created_at,
+                        destination: t.destination || t.receiver,
+                        bcDocType: t.bcDocType || t.customsDocType || t.customs_doc_type,
+                        source: 'freight_outbound'
+                    });
                 });
-            });
+            }
         });
 
         // 2. From Quotations (Planned Outbound)
@@ -132,7 +134,7 @@ const PergerakanBarang = () => {
     // Flatten Inbound items if they are grouped
     const allInboundItems = useMemo(() => {
         return inboundTransactions.flatMap((t, tIdx) => {
-            if (t.items && t.items.length > 0) {
+            if (Array.isArray(t.items) && t.items.length > 0) {
                 return t.items.map((item, itemIdx) => ({
                     ...t,
                     ...item, // Flatten item details
