@@ -319,6 +319,35 @@ export const DataProvider = ({ children }) => {
         };
     };
 
+    // Shared Helper: Map Warehouse DB -> State (freight_warehouse schema)
+    // IMPORTANT: Must be at component scope - used by both loadData useEffect AND Realtime subscriptions.
+    // Previously was inside useEffect which caused ReferenceError in Vercel production (white screen).
+    const mapWarehouseToState = (w) => {
+        // Parse location if stored as string
+        let location = w.location;
+        if (typeof location === 'string') {
+            try { location = JSON.parse(location); } catch (e) { location = {}; }
+        }
+        return {
+            ...w,
+            // CamelCase aliases for UI
+            pengajuanId: w.pengajuan_id,
+            pengajuanNumber: w.pengajuan_number,
+            bcDocumentNumber: w.bc_document_number,
+            packageNumber: w.package_number,
+            itemCode: w.item_code,
+            itemName: w.item_name,
+            assetName: w.asset_name || w.item_name,
+            serialNumber: w.serial_number,
+            entryDate: w.entry_date,
+            submissionDate: w.submission_date,
+            location: location,
+            // Legacy compatibility
+            assetId: w.item_code,
+            currentStock: w.quantity,
+        };
+    };
+
     // Load data from localStorage on mount
     useEffect(() => {
         const loadData = async () => {
@@ -357,32 +386,7 @@ export const DataProvider = ({ children }) => {
                     // Keep original snake_case too just in case? Or rely on camelCase
                 });
 
-                // Helper: Map Warehouse DB -> State (freight_warehouse schema)
-                const mapWarehouseToState = (w) => {
-                    // Parse location if stored as string
-                    let location = w.location;
-                    if (typeof location === 'string') {
-                        try { location = JSON.parse(location); } catch (e) { location = {}; }
-                    }
-                    return {
-                        ...w,
-                        // CamelCase aliases for UI
-                        pengajuanId: w.pengajuan_id,
-                        pengajuanNumber: w.pengajuan_number,
-                        bcDocumentNumber: w.bc_document_number,
-                        packageNumber: w.package_number,
-                        itemCode: w.item_code,
-                        itemName: w.item_name,
-                        assetName: w.asset_name || w.item_name,
-                        serialNumber: w.serial_number,
-                        entryDate: w.entry_date,
-                        submissionDate: w.submission_date,
-                        location: location,
-                        // Legacy compatibility
-                        assetId: w.item_code,
-                        currentStock: w.quantity,
-                    };
-                };
+                // Helper: Map Warehouse DB -> State moved to component scope above.
 
                 // Load TPPB Workflow Data (Quotations, etc.)
                 const { data: quotData, error: quotError } = await supabase.from('freight_quotations').select('*');
