@@ -119,20 +119,8 @@ const PergerakanBarang = () => {
             }
         });
 
-        // 3. From mutationLogs (Secondary - exclude Pameran/Warehouse)
-        const secondaryOutbound = mutationLogs.filter(log => {
-            const dest = (log.destination || '').toLowerCase();
-            return dest && dest !== 'warehouse' && dest !== 'gudang' && dest !== DEFAULT_LOCATION.toLowerCase();
-        }).map(log => ({
-            ...log,
-            mutatedQty: Number(log.mutated_qty) || Number(log.mutatedQty) || 0,
-            date: log.date || log.created_at,
-            itemCode: log.item_code || log.itemCode,
-            source: 'mutation_log'
-        }));
-
-        return [...Array.from(outMap.values()), ...secondaryOutbound];
-    }, [outboundTransactions, outboundQuotations, mutationLogs]);
+        return Array.from(outMap.values());
+    }, [outboundTransactions, outboundQuotations]);
 
     // Flatten Inbound items if they are grouped
     const allInboundItems = useMemo(() => {
