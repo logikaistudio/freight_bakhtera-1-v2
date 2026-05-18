@@ -125,6 +125,9 @@ const PergerakanBarang = () => {
             return dest && dest !== 'warehouse' && dest !== 'gudang' && dest !== DEFAULT_LOCATION.toLowerCase();
         }).map(log => ({
             ...log,
+            mutatedQty: Number(log.mutated_qty) || Number(log.mutatedQty) || 0,
+            date: log.date || log.created_at,
+            itemCode: log.item_code || log.itemCode,
             source: 'mutation_log'
         }));
 
