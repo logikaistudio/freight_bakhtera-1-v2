@@ -170,20 +170,15 @@ const PergerakanBarang = () => {
 
                 const outItemCode = (outItem.itemCode || '').trim().toLowerCase();
 
-                // STRICT MATCHING: Source pengajuan MUST match inbound pengajuan
-                // This ensures we only count outbound items that came FROM this specific inbound
+                // MATCHING LOGIC:
+                // 1. If outbound has a explicit source reference, it MUST match this inbound's pengajuan.
                 if (outSourcePengajuan) {
-                    // If outbound has source reference, it MUST match this inbound's pengajuan number
                     if (outSourcePengajuan !== inboundPengajuan) {
                         return false;
                     }
                 } else {
-                    // If NO source reference (e.g. mutation_log, or legacy outbound without link),
-                    // match by pengajuanNumber field directly to link them back to the same parent document.
-                    const outPengajuan = outItem.pengajuanNumber || outItem.pengajuan_number;
-                    if (outPengajuan && outPengajuan !== inboundPengajuan) {
-                        return false;
-                    }
+                    // 2. If NO source reference exists, we rely ONLY on itemCode matching.
+                    // (We remove the strict outPengajuan === inboundPengajuan check because outbound pengajuan numbers are different from inbound ones)
                 }
 
                 // Item code match (within the same pengajuan)
