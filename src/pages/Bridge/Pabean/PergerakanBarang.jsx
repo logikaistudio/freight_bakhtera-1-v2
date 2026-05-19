@@ -10,6 +10,22 @@ import { exportToXLS } from '../../../utils/exportXLS';
 const PergerakanBarang = () => {
     const [searchParams] = useSearchParams();
     const { inboundTransactions = [], outboundTransactions = [], quotations = [], mutationLogs = [], companySettings, updateInboundItem } = useData();
+
+    // Approved INBOUND quotations (source of truth for Barang Masuk)
+    const inboundQuotations = useMemo(() => {
+        return quotations.filter(q =>
+            q.type === 'inbound' &&
+            (q.documentStatus === 'approved' || q.document_status === 'approved')
+        );
+    }, [quotations]);
+
+    // Approved OUTBOUND quotations (source of truth for Barang Keluar)
+    const outboundQuotationsAll = useMemo(() => {
+        return quotations.filter(q =>
+            q.type === 'outbound' &&
+            (q.documentStatus === 'approved' || q.document_status === 'approved')
+        );
+    }, [quotations]);
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -19,34 +35,27 @@ const PergerakanBarang = () => {
     const [editingRow, setEditingRow] = useState(null); // 'inboundId-itemIdx'
     const [editForm, setEditForm] = useState({ adjustment: 0, notes: '' });
 
-    // FLATTEN OUTBOUND TRANSACTIONS FROM QUOTATIONS (Source of Truth for Plans)
+    // FLATTEN items from ALL approved OUTBOUND quotations
     const outboundQuotations = useMemo(() => {
-        return quotations
-            .filter(q => q.type === 'outbound' && ['submitted', 'approved', 'processed'].includes(q.outbound_status || q.documentStatus || q.document_status))
-            .flatMap(q => {
-                return (q.packages || []).flatMap(pkg => {
-                    return (pkg.items || []).map(item => {
-                        const qty = item.outboundQuantity !== undefined ? Number(item.outboundQuantity) : (Number(item.quantity) || 0);
-                        if (qty <= 0) return null;
-
-                        return {
-                            id: `item-${q.id}-${item.itemCode}`,
-                            pengajuanNumber: q.quotationNumber || q.quotation_number,
-                            sourcePengajuanNumber: q.sourcePengajuanNumber || q.source_pengajuan_number,
-                            itemCode: item.itemCode || item.item_code,
-                            quantity: qty,
-                            // Ensure date and doc type are mapped for reconciliation table
-                            date: q.outbound_date || q.approvedDate || q.approved_date || q.date,
-                            // Format BC Doc Type: "BC 2.7 out" (simple format without description)
-                            bcDocType: `${(q.bcDocType || q.bc_document_type || 'BC 2.7').split('(')[0].trim()} out`,
-                            customsDocNumber: q.bcDocumentNumber || q.bc_document_number,
-                            // Add other necessary fields if used by logic
-                        };
-                    });
+        return outboundQuotationsAll.flatMap(q => {
+            return (q.packages || []).flatMap(pkg => {
+                return (pkg.items || []).map(item => {
+                    const qty = item.outboundQuantity !== undefined ? Number(item.outboundQuantity) : (Number(item.quantity) || 0);
+                    if (qty <= 0) return null;
+                    return {
+                        id: `item-${q.id}-${item.itemCode}`,
+                        pengajuanNumber: q.quotationNumber || q.quotation_number,
+                        sourcePengajuanNumber: q.sourcePengajuanNumber || q.source_pengajuan_number,
+                        itemCode: item.itemCode || item.item_code,
+                        quantity: qty,
+                        date: q.outbound_date || q.approvedDate || q.approved_date || q.date,
+                        bcDocType: `${(q.bcDocType || q.bc_document_type || 'BC 2.7').split('(')[0].trim()} out`,
+                        customsDocNumber: q.bcDocumentNumber || q.bc_document_number,
+                    };
                 });
-            })
-            .filter(Boolean); // Remove nulls
-    }, [quotations]);
+            });
+        }).filter(Boolean);
+    }, [outboundQuotationsAll]);
 
     // Auto-filter based on URL parameter
     useEffect(() => {
@@ -122,69 +131,64 @@ const PergerakanBarang = () => {
         return Array.from(outMap.values());
     }, [outboundTransactions, outboundQuotations]);
 
-    // Flatten Inbound items if they are grouped
+    // Flatten Inbound items from QUOTATIONS (Pengajuan Masuk yang approved)
+    // This is the source of truth: Barang Masuk = item dari Pengajuan Masuk approved
     const allInboundItems = useMemo(() => {
-        return inboundTransactions.flatMap((t, tIdx) => {
-            if (Array.isArray(t.items) && t.items.length > 0) {
-                return t.items.map((item, itemIdx) => ({
-                    ...t,
-                    ...item, // Flatten item details
-                    // Ensure essential IDs are preserved and fields are prioritized
-                    inboundId: t.id,
-                    submissionSeqNo: itemIdx === 0 ? tIdx + 1 : '',
+        return inboundQuotations.flatMap((q, qIdx) => {
+            const pengajuanNumber = q.quotationNumber || q.quotation_number;
+            return (q.packages || []).flatMap((pkg) =>
+                (pkg.items || []).map((item, itemIdx) => ({
+                    inboundId: q.id,
+                    submissionSeqNo: qIdx + 1,
                     itemIdx: itemIdx,
-                    // Strick Mapping: PREFER item level data. Do NOT fallback to 't' (header) easily for multi-item arrays.
+                    pengajuanNumber: pengajuanNumber,
+                    customsDocNumber: q.bcDocumentNumber || q.bc_document_number,
+                    customsDocType: q.bcDocType || q.bc_document_type,
+                    date: q.date || q.approvedDate || q.approved_date,
                     assetName: item.itemName || item.name || item.assetName || item.description,
-                    itemCode: item.itemCode || item.item_code || item.code, // Avoid t.itemCode fallback inside items loop
-                    originalQty: Number(item.quantity) || Number(item.qty) || 0,
-                    // Use actual sequence number from data
-                    noUrut: item.sequenceNumber || item.noUrut || (itemIdx + 1)
-                }));
-            }
-            return [{
-                ...t,
-                inboundId: t.id,
-                submissionSeqNo: tIdx + 1,
-                originalQty: Number(t.quantity) || 0,
-                noUrut: 1
-            }];
+                    itemCode: item.itemCode || item.item_code || item.code,
+                    originalQty: Number(item.quantity) || 0,
+                    unit: item.uom || item.unit || 'pcs',
+                    noUrut: itemIdx + 1,
+                    notes: item.notes || q.notes,
+                    customer: q.customer,
+                }))
+            );
         });
-    }, [inboundTransactions]);
+    }, [inboundQuotations]);
 
     // Calculation Logic: Map Inbound -> Calculate Outbound -> Result
-    // Simple: Mutasi = Barang Masuk - Barang Keluar for the SAME pengajuan
+    // RECONCILIATION: Mutasi = Barang Masuk (Pengajuan Inbound) - Barang Keluar (Pengajuan Outbound)
+    // Match outbound to inbound by: 1) sourcePengajuanNumber (explicit link) OR 2) matching itemCode
     const reconciliationData = useMemo(() => {
-        return allInboundItems.map(inbound => {
-            // Find Matching Outbound Items
-            // IMPORTANT: Primary match is by pengajuanNumber (source reference)
-            // Secondary match is by itemCode within the same pengajuan
+        // Pre-build a map: itemCode -> list of outbound items (qty summed per outbound quotation)
+        // This allows us to match any inbound item to outbound items by itemCode
+        const outboundByItemCode = new Map();
+        allOutboundItems.forEach(outItem => {
+            const code = (outItem.itemCode || '').trim().toLowerCase();
+            if (!code) return;
+            if (!outboundByItemCode.has(code)) outboundByItemCode.set(code, []);
+            outboundByItemCode.get(code).push(outItem);
+        });
 
+        return allInboundItems.map(inbound => {
             const inboundPengajuan = inbound.pengajuanNumber || inbound.pengajuan_number;
             const inboundItemCode = (inbound.itemCode || '').trim().toLowerCase();
 
-            const relatedOutbound = allOutboundItems.filter(outItem => {
-                // Get source pengajuan from outbound (this links back to which inbound it came from)
+            // Find all outbound records that match this inbound item
+            const candidateOutbound = outboundByItemCode.get(inboundItemCode) || [];
+
+            const relatedOutbound = candidateOutbound.filter(outItem => {
                 const outSourcePengajuan = outItem.sourcePengajuanNumber ||
                     outItem.source_pengajuan_number ||
                     (outItem.documents && (outItem.documents.source_pengajuan_number || outItem.documents.sourcePengajuanNumber));
 
-                const outItemCode = (outItem.itemCode || '').trim().toLowerCase();
-
-                // MATCHING LOGIC:
-                // 1. If outbound has a explicit source reference, it MUST match this inbound's pengajuan.
+                // If outbound explicitly references this inbound pengajuan → match
                 if (outSourcePengajuan) {
-                    if (outSourcePengajuan !== inboundPengajuan) {
-                        return false;
-                    }
-                } else {
-                    // 2. If NO source reference exists, we rely ONLY on itemCode matching.
-                    // (We remove the strict outPengajuan === inboundPengajuan check because outbound pengajuan numbers are different from inbound ones)
+                    return outSourcePengajuan === inboundPengajuan;
                 }
-
-                // Item code match (within the same pengajuan)
-                const matchCode = inboundItemCode && outItemCode && (outItemCode === inboundItemCode);
-
-                return matchCode;
+                // Otherwise: match by itemCode (already guaranteed by the map key)
+                return true;
             });
 
             // Calculate total outbound quantity
