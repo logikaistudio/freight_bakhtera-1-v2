@@ -107,7 +107,7 @@ const DocumentUploadManager = ({ documents = [], onChange, maxFiles = null, maxS
                 <Upload className="w-5 h-5 text-accent-purple" />
                 <h3 className="text-lg font-semibold text-silver-light">Dokumen Pendukung</h3>
                 <span className="text-xs text-silver-dark">
-                    ({documents.length}{maxFiles ? `/${maxFiles}` : ''} dokumen, max {maxSizeKB}KB per file)
+                    (max {maxSizeKB}KB per file)
                 </span>
             </div>
 
