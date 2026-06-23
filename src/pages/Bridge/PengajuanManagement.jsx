@@ -1447,7 +1447,6 @@ const PengajuanManagement = () => {
                     <DocumentUploadManager
                         documents={formData.documents}
                         onChange={(docs) => setFormData({ ...formData, documents: docs })}
-                        maxFiles={10}
                         maxSizeKB={200}
                     />
 
@@ -2027,7 +2026,6 @@ const PengajuanManagement = () => {
                                 <DocumentUploadManager
                                     documents={editFormData.bcSupportingDocuments}
                                     onChange={(docs) => setEditFormData({ ...editFormData, bcSupportingDocuments: docs })}
-                                    maxFiles={10}
                                     maxSizeKB={200}
                                     label="Dokumen Pendukung Pabean"
                                 />
